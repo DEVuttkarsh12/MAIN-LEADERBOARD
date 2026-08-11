@@ -132,7 +132,7 @@ export default function LeaderboardPage() {
       </div>
 
       <div className="battle-mode-strip" aria-label="Leaderboard modes">
-        <a className="battle-mode active" href="https://casebattle.com/" target="_blank" rel="noreferrer"><span>01</span><div><CaseBattleLogo className="mode-casebattle-logo" /></div><b>LIVE ↗</b></a>
+        <a className="battle-mode active" href="https://casebattle.a" target="_blank" rel="noreferrer"><span>01</span><div><CaseBattleLogo className="mode-casebattle-logo" /></div><b>LIVE ↗</b></a>
         <a className="battle-mode locked" href="https://shuffle.com/" target="_blank" rel="noreferrer"><span>02</span><div><ShuffleLogo className="mode-shuffle-logo" /></div><b>SOON</b></a>
       </div>
 
