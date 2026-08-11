@@ -19,8 +19,15 @@ const nameKeys = ["username", "userName", "displayName", "nickname", "name", "pl
 const handleKeys = ["handle", "slug", "userId", "userid", "id"];
 const rankKeys = ["rank", "position", "place"];
 const pointsKeys = ["points", "score", "total", "value", "amount", "wagered", "wager", "tickets"];
-const winningsKeys = ["winnings", "winning", "prize", "prizeAmount", "reward", "rewardAmount", "payout", "payoutAmount"];
 const movementKeys = ["movement", "trend", "change", "rankChange", "positionChange"];
+const maxLeaderboardPlayers = 5;
+const prizesByRank: Record<number, number> = {
+  1: 500,
+  2: 250,
+  3: 100,
+  4: 50,
+  5: 25,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -114,22 +121,16 @@ function initialsFor(name: string): string {
   return (letters || name.slice(0, 2)).slice(0, 2).toUpperCase();
 }
 
-function formatCurrency(value: unknown): string {
-  const text = toText(value);
-  if (text && /[$€£]/.test(text)) {
-    return text;
-  }
-
-  const amount = toNumber(value);
-  if (amount === undefined) {
-    return "$0";
-  }
-
+function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
   }).format(amount);
+}
+
+function prizeForRank(rank: number): string {
+  return formatCurrency(prizesByRank[rank] ?? 0);
 }
 
 function toMovement(value: unknown): LeaderboardPlayer["movement"] {
@@ -170,7 +171,7 @@ function normalizePlayer(entry: unknown, index: number): LeaderboardPlayer | und
     handle,
     initials: initialsFor(name),
     points,
-    winnings: formatCurrency(readValue(entry, winningsKeys)),
+    winnings: "$0",
     movement: toMovement(readValue(entry, movementKeys)),
   };
 }
@@ -202,7 +203,11 @@ export async function GET() {
       .map(normalizePlayer)
       .filter((player): player is LeaderboardPlayer => Boolean(player))
       .sort((a, b) => a.rank - b.rank)
-      .map((player, index) => ({ ...player, rank: index + 1 }));
+      .slice(0, maxLeaderboardPlayers)
+      .map((player, index) => {
+        const rank = index + 1;
+        return { ...player, rank, winnings: prizeForRank(rank) };
+      });
 
     return NextResponse.json(
       { players, sourceUpdatedAt: new Date().toISOString() },

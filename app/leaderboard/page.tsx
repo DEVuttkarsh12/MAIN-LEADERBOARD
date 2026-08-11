@@ -45,7 +45,7 @@ function formatCurrency(value: number) {
 export default function LeaderboardPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"all" | "rising" | "top10">("all");
+  const [view, setView] = useState<"all" | "rising" | "top5">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,7 +99,7 @@ export default function LeaderboardPage() {
     const term = query.trim().toLowerCase();
     return players.filter((player) => {
       const matchesSearch = !term || `${player.name} ${player.handle}`.toLowerCase().includes(term);
-      const matchesView = view === "all" || (view === "rising" && player.movement === "up") || (view === "top10" && player.rank <= 10);
+      const matchesView = view === "all" || (view === "rising" && player.movement === "up") || (view === "top5" && player.rank <= 5);
       return matchesSearch && matchesView;
     });
   }, [players, query, view]);
@@ -164,7 +164,7 @@ export default function LeaderboardPage() {
         <div className="ranking-filters" aria-label="Filter rankings">
           <button type="button" className={view === "all" ? "active" : ""} onClick={() => setView("all")} aria-pressed={view === "all"}>All <span>{players.length}</span></button>
           <button type="button" className={view === "rising" ? "active" : ""} onClick={() => setView("rising")} aria-pressed={view === "rising"}>Rising <span>{risingCount}</span></button>
-          <button type="button" className={view === "top10" ? "active" : ""} onClick={() => setView("top10")} aria-pressed={view === "top10"}>Top 10 <span>{Math.min(players.length, 10)}</span></button>
+          <button type="button" className={view === "top5" ? "active" : ""} onClick={() => setView("top5")} aria-pressed={view === "top5"}>Top 5 <span>{Math.min(players.length, 5)}</span></button>
         </div>
 
         <div className="rank-list-header" aria-hidden="true">
