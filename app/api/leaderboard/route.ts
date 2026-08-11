@@ -21,7 +21,13 @@ const rankKeys = ["rank", "position", "place"];
 const pointsKeys = ["points", "score", "total", "value", "amount", "wagered", "wager", "tickets"];
 const movementKeys = ["movement", "trend", "change", "rankChange", "positionChange"];
 const maxLeaderboardPlayers = 5;
-const leaderboardPrize = 1000;
+const prizesByRank: Record<number, number> = {
+  1: 500,
+  2: 250,
+  3: 100,
+  4: 50,
+  5: 25,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +129,8 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function leaderboardPrizeLabel(): string {
-  return formatCurrency(leaderboardPrize);
+function prizeForRank(rank: number): string {
+  return formatCurrency(prizesByRank[rank] ?? 0);
 }
 
 function toMovement(value: unknown): LeaderboardPlayer["movement"] {
@@ -200,7 +206,7 @@ export async function GET() {
       .slice(0, maxLeaderboardPlayers)
       .map((player, index) => {
         const rank = index + 1;
-        return { ...player, rank, winnings: leaderboardPrizeLabel() };
+        return { ...player, rank, winnings: prizeForRank(rank) };
       });
 
     return NextResponse.json(
