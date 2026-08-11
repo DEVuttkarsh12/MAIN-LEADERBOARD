@@ -18,6 +18,10 @@ type LeaderboardResponse = {
   error?: string;
 };
 
+const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
+const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
+const fixedPrizePool = 1000;
+
 function movementSymbol(value: Player["movement"]) {
   return value === "up" ? "↑" : value === "down" ? "↓" : "—";
 }
@@ -29,9 +33,13 @@ function formatCompactNumber(value: number) {
   }).format(value);
 }
 
-function currencyValue(value: string) {
-  const parsed = Number(value.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
+function formatCompactCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: value >= 10000 ? "compact" : "standard",
+    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+  }).format(value);
 }
 
 function formatCurrency(value: number) {
@@ -42,12 +50,50 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function seasonCountdown(now: Date) {
+  const nowTime = now.getTime();
+  const elapsed = nowTime - leaderboardSeasonStartTime;
+  const currentCycleEnd =
+    elapsed < 0
+      ? leaderboardSeasonStartTime
+      : leaderboardSeasonStartTime + (Math.floor(elapsed / leaderboardSeasonDurationMs) + 1) * leaderboardSeasonDurationMs;
+  const remainingMs = Math.max(0, currentCycleEnd - nowTime);
+  const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+
+  return `${String(days).padStart(2, "0")}D : ${String(hours).padStart(2, "0")}H`;
+}
+
+function maskedPlayerName(name: string) {
+  const characters = Array.from(name.trim());
+  const visibleCharacters = characters.filter((character) => /[a-z0-9]/i.test(character)).length;
+
+  if (visibleCharacters <= 1) {
+    return name.trim();
+  }
+
+  const visibleLimit = Math.min(3, visibleCharacters - 1);
+  let revealed = 0;
+
+  return characters
+    .map((character) => {
+      if (!/[a-z0-9]/i.test(character)) {
+        return character;
+      }
+
+      revealed += 1;
+      return revealed <= visibleLimit ? character : "*";
+    })
+    .join("");
+}
+
 export default function LeaderboardPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"all" | "rising" | "top5">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState("--D : --H");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -86,13 +132,23 @@ export default function LeaderboardPage() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    function refreshCountdown() {
+      setCountdown(seasonCountdown(new Date()));
+    }
+
+    refreshCountdown();
+    const timer = window.setInterval(refreshCountdown, 60 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   const podiumOrder = useMemo(() => {
     const topThree = players.slice(0, 3);
     return [topThree[1], topThree[0], topThree[2]].filter((player): player is Player => Boolean(player));
   }, [players]);
 
   const risingCount = useMemo(() => players.filter((player) => player.movement === "up").length, [players]);
-  const prizePool = useMemo(() => players.reduce((total, player) => total + currencyValue(player.winnings), 0), [players]);
   const topScore = players[0]?.points ?? 0;
 
   const filteredPlayers = useMemo(() => {
@@ -120,14 +176,14 @@ export default function LeaderboardPage() {
           <span className="ticket-hole ticket-hole-one" /><span className="ticket-hole ticket-hole-two" />
           <CaseBattleLogo className="casebattle-logo-ticket" />
           <div><span>SEASON 01</span><span>LIVE NOW</span></div>
-          <b>04D : 18H</b>
+          <b>{countdown}</b>
         </div>
       </section>
 
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
         <div><span>PLAYERS</span><strong>{formatCompactNumber(players.length)}</strong></div>
-        <div><span>TOP SCORE</span><strong>{formatCompactNumber(topScore)}</strong></div>
-        <div><span>PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
+        <div><span>DOLLARS</span><strong>{formatCompactCurrency(topScore)}</strong></div>
+        <div><span>PRIZE POOL</span><strong>{formatCurrency(fixedPrizePool)}</strong></div>
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
       </div>
 
@@ -145,8 +201,8 @@ export default function LeaderboardPage() {
             <article className={`podium-card podium-rank-${player.rank}`} key={player.rank}>
               <span className="podium-number">#{player.rank}</span>
               <span className="podium-avatar">{player.initials}</span>
-              <div className="podium-player"><strong>{player.name}</strong></div>
-              <div className="podium-score"><span>POINTS</span><strong>{player.points.toLocaleString()}</strong></div>
+              <div className="podium-player"><strong>{maskedPlayerName(player.name)}</strong></div>
+              <div className="podium-score"><span>DOLLARS</span><strong>{formatCurrency(player.points)}</strong></div>
             </article>
           )) : <div className="no-results">{isLoading ? "LOADING LIVE DATA..." : error ? error.toUpperCase() : "NO LIVE PLAYERS YET."}</div>}
         </div>
@@ -168,7 +224,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="rank-list-header" aria-hidden="true">
-          <span>PLAYER</span><span>POINTS</span><span>PRIZE</span>
+          <span>PLAYER</span><span>DOLLARS</span><span>PRIZE</span>
         </div>
         <ol className="rank-list" aria-label="Case Battles player rankings">
           {filteredPlayers.map((player) => (
@@ -177,9 +233,9 @@ export default function LeaderboardPage() {
                 <span className="rank-number">{String(player.rank).padStart(2, "0")}</span>
                 <span className={`rank-move move-${player.movement}`}>{movementSymbol(player.movement)}</span>
                 <span className="rank-avatar">{player.initials}</span>
-                <span className="rank-name"><strong>{player.name}</strong></span>
+                <span className="rank-name"><strong>{maskedPlayerName(player.name)}</strong></span>
               </div>
-              <span className="rank-stat points-stat"><small>Points</small>{player.points.toLocaleString()}</span>
+              <span className="rank-stat points-stat"><small>Dollars</small>{formatCurrency(player.points)}</span>
               <span className="rank-stat winning-stat"><small>Prize</small>{player.winnings}</span>
             </li>
           ))}
