@@ -20,6 +20,7 @@ type FetchPageDiagnostic = SafeUrlDetails & {
   entryCount: number;
   totalCount?: number;
   upstreamUpdatedAt?: string;
+  responseHint?: string;
 };
 
 type FetchAttemptDiagnostic = {
@@ -86,7 +87,6 @@ const offsetKeys = ["offset", "skip"];
 const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
 const upstreamUpdatedAtKeys = ["updatedAt", "updated_at", "sourceUpdatedAt", "source_updated_at", "lastUpdated", "last_updated", "timestamp", "generatedAt", "generated_at"];
-const dateParamKeys = ["from", "to", "fromDate", "toDate", "startDate", "endDate"];
 const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00.000Z").getTime();
 const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
@@ -301,13 +301,6 @@ function currentSeasonIsoRange() {
   };
 }
 
-function currentSeasonUtcWallClockRange() {
-  return {
-    from: "2026-08-11T22:00:00.000Z",
-    to: "2026-08-25T21:59:59.999Z",
-  };
-}
-
 function textValue(value: unknown): string | undefined {
   const text = toText(value);
   if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "undefined") {
@@ -407,6 +400,19 @@ function safeUrlDetails(url: string): SafeUrlDetails {
   };
 }
 
+function normalizeConfiguredUrl(url: string): string {
+  const requestUrl = new URL(url.trim());
+
+  for (const [key, value] of Array.from(requestUrl.searchParams.entries())) {
+    const trimmedValue = value.trim();
+    if (trimmedValue !== value) {
+      requestUrl.searchParams.set(key, trimmedValue);
+    }
+  }
+
+  return requestUrl.toString();
+}
+
 function cursorNextPageUrl(payload: unknown, currentUrl: string): string | undefined {
   const hasNextPage = readBooleanFromContainers(payload, hasNextPageKeys);
   if (hasNextPage === false) {
@@ -426,7 +432,7 @@ function cursorNextPageUrl(payload: unknown, currentUrl: string): string | undef
   return url.toString();
 }
 
-function pageDiagnostic(url: string, response: Pick<Response, "ok" | "status" | "statusText">, payload?: unknown): FetchPageDiagnostic {
+function pageDiagnostic(url: string, response: Pick<Response, "ok" | "status" | "statusText">, payload?: unknown, responseHint?: string): FetchPageDiagnostic {
   return {
     ...safeUrlDetails(url),
     status: response.status,
@@ -435,6 +441,7 @@ function pageDiagnostic(url: string, response: Pick<Response, "ok" | "status" | 
     entryCount: payload === undefined ? 0 : extractEntries(payload).length,
     totalCount: payload === undefined ? undefined : readNumberFromContainers(payload, totalCountKeys),
     upstreamUpdatedAt: payload === undefined ? undefined : readTextFromContainers(payload, upstreamUpdatedAtKeys),
+    responseHint,
   };
 }
 
@@ -454,62 +461,9 @@ function setLimitParam(url: string) {
   return requestUrl.toString();
 }
 
-function deleteDateParams(url: URL) {
-  for (const key of dateParamKeys) {
-    url.searchParams.delete(key);
-  }
-}
-
-function setLiveLimitParams(url: string) {
-  const requestUrl = new URL(url);
-
-  deleteDateParams(requestUrl);
-  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
-
-  return requestUrl.toString();
-}
-
-function setPaginationParams(url: string) {
-  const requestUrl = new URL(url);
-
-  setPageSizeParams(requestUrl);
-
-  if (!requestUrl.searchParams.has("page")) {
-    requestUrl.searchParams.set("page", "1");
-  }
-
-  if (!requestUrl.searchParams.has("offset")) {
-    requestUrl.searchParams.set("offset", "0");
-  }
-
-  return requestUrl.toString();
-}
-
-function setSeasonLimitParams(url: string) {
-  const requestUrl = new URL(url);
-  const { from, to } = currentSeasonRange();
-
-  requestUrl.searchParams.set("from", String(from));
-  requestUrl.searchParams.set("to", String(to));
-  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
-
-  return requestUrl.toString();
-}
-
 function setSeasonIsoLimitParams(url: string) {
   const requestUrl = new URL(url);
   const { from, to } = currentSeasonIsoRange();
-
-  requestUrl.searchParams.set("from", from);
-  requestUrl.searchParams.set("to", to);
-  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
-
-  return requestUrl.toString();
-}
-
-function setSeasonUtcWallClockLimitParams(url: string) {
-  const requestUrl = new URL(url);
-  const { from, to } = currentSeasonUtcWallClockRange();
 
   requestUrl.searchParams.set("from", from);
   requestUrl.searchParams.set("to", to);
@@ -542,55 +496,14 @@ function setConfiguredFromToNowLimitParams(url: string) {
   return requestUrl.toString();
 }
 
-function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "iso" | "date") {
-  const requestUrl = new URL(url);
-  const { from, to } = currentSeasonRange();
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
-
-  if (dateMode === "milliseconds") {
-    requestUrl.searchParams.set("from", String(from));
-    requestUrl.searchParams.set("to", String(to));
-  }
-
-  if (dateMode === "iso") {
-    requestUrl.searchParams.set("fromDate", fromDate.toISOString());
-    requestUrl.searchParams.set("toDate", toDate.toISOString());
-  }
-
-  if (dateMode === "date") {
-    requestUrl.searchParams.set("startDate", fromDate.toISOString().slice(0, 10));
-    requestUrl.searchParams.set("endDate", toDate.toISOString().slice(0, 10));
-  }
-
-  setPageSizeParams(requestUrl);
-
-  if (!requestUrl.searchParams.has("page")) {
-    requestUrl.searchParams.set("page", "1");
-  }
-
-  if (!requestUrl.searchParams.has("offset")) {
-    requestUrl.searchParams.set("offset", "0");
-  }
-
-  return requestUrl.toString();
-}
-
 function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
+  const normalizedUrl = normalizeConfiguredUrl(url);
   const requests: LeaderboardRequestUrl[] = [
-    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(url) },
-    { label: "season-utc-wall-clock-limit-only", url: setSeasonUtcWallClockLimitParams(url) },
-    { label: "configured", url },
-    { label: "configured-from-to-now-limit-only", url: setConfiguredFromToNowLimitParams(url) },
-    { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(url, currentSeasonIsoRange().from) },
-    { label: "season-utc-wall-clock-to-now-limit-only", url: setCurrentIsoLimitParams(url, currentSeasonUtcWallClockRange().from) },
-    { label: "limit-only", url: setLimitParam(url) },
-    { label: "live-limit-only", url: setLiveLimitParams(url) },
-    { label: "season-ms-limit-only", url: setSeasonLimitParams(url) },
-    { label: "expanded-pagination", url: setPaginationParams(url) },
-    { label: "season-ms", url: setReadOnlyLeaderboardParams(url, "milliseconds") },
-    { label: "season-iso", url: setReadOnlyLeaderboardParams(url, "iso") },
-    { label: "season-date", url: setReadOnlyLeaderboardParams(url, "date") },
+    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(normalizedUrl) },
+    { label: "configured", url: normalizedUrl },
+    { label: "configured-from-to-now-limit-only", url: setConfiguredFromToNowLimitParams(normalizedUrl) },
+    { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(normalizedUrl, currentSeasonIsoRange().from) },
+    { label: "limit-only", url: setLimitParam(normalizedUrl) },
   ];
   const seen = new Set<string>();
 
@@ -648,6 +561,22 @@ function fallbackNextPageUrl(payload: unknown, currentUrl: string, entryCount: n
   return entryCount >= leaderboardPageSize ? pageNumberUrl(currentUrl, currentPage + 1) : undefined;
 }
 
+async function safeResponseHint(response: Response): Promise<string | undefined> {
+  try {
+    const text = await response.text();
+    if (!text.trim()) {
+      return undefined;
+    }
+
+    return text
+      .replace(/"password"\s*:\s*"[^"]*"/gi, '"password":"[redacted]"')
+      .replace(/password=([^&\s"]+)/gi, "password=[redacted]")
+      .slice(0, 500);
+  } catch {
+    return undefined;
+  }
+}
+
 async function fetchLeaderboardPayloads(url: string): Promise<{ payloads: unknown[]; pages: FetchPageDiagnostic[] }> {
   const payloads: unknown[] = [];
   const pages: FetchPageDiagnostic[] = [];
@@ -664,7 +593,7 @@ async function fetchLeaderboardPayloads(url: string): Promise<{ payloads: unknow
     });
 
     if (!response.ok) {
-      pages.push(pageDiagnostic(currentUrl, response));
+      pages.push(pageDiagnostic(currentUrl, response, undefined, await safeResponseHint(response)));
       throw new LeaderboardFetchError(`Leaderboard API returned ${response.status}.`, pages);
     }
 
