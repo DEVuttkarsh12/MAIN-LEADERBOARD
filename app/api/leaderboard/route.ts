@@ -280,6 +280,22 @@ function currentSeasonRange() {
   };
 }
 
+function currentSeasonIsoRange() {
+  const { from, to } = currentSeasonRange();
+
+  return {
+    from: new Date(from).toISOString(),
+    to: new Date(to - 1).toISOString(),
+  };
+}
+
+function currentSeasonUtcWallClockRange() {
+  return {
+    from: "2026-08-11T22:00:00.000Z",
+    to: "2026-08-25T21:59:59.999Z",
+  };
+}
+
 function textValue(value: unknown): string | undefined {
   const text = toText(value);
   if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "undefined") {
@@ -452,6 +468,28 @@ function setSeasonLimitParams(url: string) {
   return requestUrl.toString();
 }
 
+function setSeasonIsoLimitParams(url: string) {
+  const requestUrl = new URL(url);
+  const { from, to } = currentSeasonIsoRange();
+
+  requestUrl.searchParams.set("from", from);
+  requestUrl.searchParams.set("to", to);
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  return requestUrl.toString();
+}
+
+function setSeasonUtcWallClockLimitParams(url: string) {
+  const requestUrl = new URL(url);
+  const { from, to } = currentSeasonUtcWallClockRange();
+
+  requestUrl.searchParams.set("from", from);
+  requestUrl.searchParams.set("to", to);
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  return requestUrl.toString();
+}
+
 function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "iso" | "date") {
   const requestUrl = new URL(url);
   const { from, to } = currentSeasonRange();
@@ -491,6 +529,8 @@ function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
     { label: "configured", url },
     { label: "limit-only", url: setLimitParam(url) },
     { label: "season-ms-limit-only", url: setSeasonLimitParams(url) },
+    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(url) },
+    { label: "season-utc-wall-clock-limit-only", url: setSeasonUtcWallClockLimitParams(url) },
     { label: "expanded-pagination", url: setPaginationParams(url) },
     { label: "season-ms", url: setReadOnlyLeaderboardParams(url, "milliseconds") },
     { label: "season-iso", url: setReadOnlyLeaderboardParams(url, "iso") },
