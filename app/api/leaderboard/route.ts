@@ -2,6 +2,33 @@ import { NextResponse } from "next/server";
 
 type RawRecord = Record<string, unknown>;
 
+type LeaderboardRequestUrl = {
+  label: string;
+  url: string;
+};
+
+type SafeUrlDetails = {
+  host: string;
+  pathname: string;
+  queryKeys: string[];
+};
+
+type FetchPageDiagnostic = SafeUrlDetails & {
+  status: number;
+  ok: boolean;
+  entryCount: number;
+  totalCount?: number;
+  upstreamUpdatedAt?: string;
+};
+
+type FetchAttemptDiagnostic = {
+  label: string;
+  playerCount: number;
+  pageCount: number;
+  pages: FetchPageDiagnostic[];
+  error?: string;
+};
+
 export type LeaderboardPlayer = {
   rank: number;
   name: string;
@@ -45,6 +72,7 @@ const currentPageKeys = ["page", "currentPage", "current_page", "pageNumber", "p
 const offsetKeys = ["offset", "skip"];
 const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
+const upstreamUpdatedAtKeys = ["updatedAt", "updated_at", "sourceUpdatedAt", "source_updated_at", "lastUpdated", "last_updated", "timestamp", "generatedAt", "generated_at"];
 const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime();
 const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
@@ -58,6 +86,8 @@ const prizesByRank: Record<number, number> = {
 };
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 function isRecord(value: unknown): value is RawRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -275,6 +305,38 @@ function readNumberFromContainers(payload: unknown, keys: string[]): number | un
   return undefined;
 }
 
+function readTextFromContainers(payload: unknown, keys: string[]): string | undefined {
+  for (const container of containerRecords(payload)) {
+    const value = toText(readValue(container, keys));
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function safeUrlDetails(url: string): SafeUrlDetails {
+  const requestUrl = new URL(url);
+
+  return {
+    host: requestUrl.host,
+    pathname: requestUrl.pathname,
+    queryKeys: Array.from(requestUrl.searchParams.keys()).sort(),
+  };
+}
+
+function pageDiagnostic(url: string, status: number, ok: boolean, payload?: unknown): FetchPageDiagnostic {
+  return {
+    ...safeUrlDetails(url),
+    status,
+    ok,
+    entryCount: payload === undefined ? 0 : extractEntries(payload).length,
+    totalCount: payload === undefined ? undefined : readNumberFromContainers(payload, totalCountKeys),
+    upstreamUpdatedAt: payload === undefined ? undefined : readTextFromContainers(payload, upstreamUpdatedAtKeys),
+  };
+}
+
 function setPageSizeParams(url: URL) {
   url.searchParams.set("limit", String(leaderboardPageSize));
   url.searchParams.set("perPage", String(leaderboardPageSize));
@@ -335,16 +397,24 @@ function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "i
   return requestUrl.toString();
 }
 
-function leaderboardRequestUrls(url: string): string[] {
-  return Array.from(
-    new Set([
-      url,
-      setPaginationParams(url),
-      setReadOnlyLeaderboardParams(url, "milliseconds"),
-      setReadOnlyLeaderboardParams(url, "iso"),
-      setReadOnlyLeaderboardParams(url, "date"),
-    ]),
-  );
+function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
+  const requests: LeaderboardRequestUrl[] = [
+    { label: "configured", url },
+    { label: "expanded-pagination", url: setPaginationParams(url) },
+    { label: "season-ms", url: setReadOnlyLeaderboardParams(url, "milliseconds") },
+    { label: "season-iso", url: setReadOnlyLeaderboardParams(url, "iso") },
+    { label: "season-date", url: setReadOnlyLeaderboardParams(url, "date") },
+  ];
+  const seen = new Set<string>();
+
+  return requests.filter((request) => {
+    if (seen.has(request.url)) {
+      return false;
+    }
+
+    seen.add(request.url);
+    return true;
+  });
 }
 
 function pageNumberUrl(currentUrl: string, page: number, offset = (page - 1) * leaderboardPageSize): string {
@@ -391,8 +461,9 @@ function fallbackNextPageUrl(payload: unknown, currentUrl: string, entryCount: n
   return entryCount >= leaderboardPageSize ? pageNumberUrl(currentUrl, currentPage + 1) : undefined;
 }
 
-async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
+async function fetchLeaderboardPayloads(url: string): Promise<{ payloads: unknown[]; pages: FetchPageDiagnostic[] }> {
   const payloads: unknown[] = [];
+  const pages: FetchPageDiagnostic[] = [];
   const visitedUrls = new Set<string>();
   let currentUrl: string | undefined = url;
 
@@ -406,16 +477,18 @@ async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
     });
 
     if (!response.ok) {
+      pages.push(pageDiagnostic(currentUrl, response.status, false));
       throw new Error("Leaderboard data is unavailable.");
     }
 
     const payload: unknown = await response.json();
     const entryCount = extractEntries(payload).length;
+    pages.push(pageDiagnostic(currentUrl, response.status, true, payload));
     payloads.push(payload);
     currentUrl = nextPageUrl(payload, currentUrl) ?? fallbackNextPageUrl(payload, currentUrl, entryCount);
   }
 
-  return payloads;
+  return { payloads, pages };
 }
 
 function normalizePlayers(payloads: unknown[]) {
@@ -445,19 +518,36 @@ function normalizePlayers(payloads: unknown[]) {
 
 async function fetchBestLeaderboard(url: string) {
   let bestPlayers: LeaderboardPlayer[] = [];
+  let selectedLabel = "none";
+  const attempts: FetchAttemptDiagnostic[] = [];
 
-  for (const requestUrl of leaderboardRequestUrls(url)) {
+  for (const request of leaderboardRequestUrls(url)) {
     try {
-      const players = normalizePlayers(await fetchLeaderboardPayloads(requestUrl));
+      const result = await fetchLeaderboardPayloads(request.url);
+      const players = normalizePlayers(result.payloads);
+      attempts.push({
+        label: request.label,
+        playerCount: players.length,
+        pageCount: result.pages.length,
+        pages: result.pages,
+      });
+
       if (players.length > bestPlayers.length) {
         bestPlayers = players;
+        selectedLabel = request.label;
       }
-    } catch {
-      continue;
+    } catch (error) {
+      attempts.push({
+        label: request.label,
+        playerCount: 0,
+        pageCount: 0,
+        pages: [],
+        error: error instanceof Error ? error.message : "Leaderboard data is unavailable.",
+      });
     }
   }
 
-  return bestPlayers;
+  return { players: bestPlayers, selectedLabel, attempts };
 }
 
 function toMovement(value: unknown): LeaderboardPlayer["movement"] {
@@ -510,7 +600,7 @@ function playerKey(player: LeaderboardPlayer): string {
   return normalizedHandle.startsWith("#") ? `name:${normalizedName}` : `handle:${normalizedHandle}`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!CASEBATTLE_LEADERBOARD_URL) {
     return NextResponse.json(
       { players: [], error: "Leaderboard API URL is not configured." },
@@ -519,10 +609,27 @@ export async function GET() {
   }
 
   try {
-    const players = await fetchBestLeaderboard(CASEBATTLE_LEADERBOARD_URL);
+    const debug = new URL(request.url).searchParams.get("debug") === "1";
+    const fetchedAt = new Date().toISOString();
+    const result = await fetchBestLeaderboard(CASEBATTLE_LEADERBOARD_URL);
+    const successfulAttempts = result.attempts.filter((attempt) => !attempt.error).length;
+    const responseBody = {
+      players: result.players,
+      season: currentSeasonRange(),
+      source: {
+        type: "live-api",
+        fetchedAt,
+        selectedVariant: result.selectedLabel,
+        playerCount: result.players.length,
+        attemptedVariants: result.attempts.length,
+        successfulVariants: successfulAttempts,
+      },
+      sourceUpdatedAt: fetchedAt,
+      ...(debug ? { diagnostics: result.attempts } : {}),
+    };
 
     return NextResponse.json(
-      { players, season: currentSeasonRange(), sourceUpdatedAt: new Date().toISOString() },
+      responseBody,
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
