@@ -419,6 +419,12 @@ function setPageSizeParams(url: URL) {
   url.searchParams.set("take", String(leaderboardPageSize));
 }
 
+function setLimitParam(url: string) {
+  const requestUrl = new URL(url);
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+  return requestUrl.toString();
+}
+
 function setPaginationParams(url: string) {
   const requestUrl = new URL(url);
 
@@ -431,6 +437,17 @@ function setPaginationParams(url: string) {
   if (!requestUrl.searchParams.has("offset")) {
     requestUrl.searchParams.set("offset", "0");
   }
+
+  return requestUrl.toString();
+}
+
+function setSeasonLimitParams(url: string) {
+  const requestUrl = new URL(url);
+  const { from, to } = currentSeasonRange();
+
+  requestUrl.searchParams.set("from", String(from));
+  requestUrl.searchParams.set("to", String(to));
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
 
   return requestUrl.toString();
 }
@@ -472,6 +489,8 @@ function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "i
 function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
   const requests: LeaderboardRequestUrl[] = [
     { label: "configured", url },
+    { label: "limit-only", url: setLimitParam(url) },
+    { label: "season-ms-limit-only", url: setSeasonLimitParams(url) },
     { label: "expanded-pagination", url: setPaginationParams(url) },
     { label: "season-ms", url: setReadOnlyLeaderboardParams(url, "milliseconds") },
     { label: "season-iso", url: setReadOnlyLeaderboardParams(url, "iso") },
