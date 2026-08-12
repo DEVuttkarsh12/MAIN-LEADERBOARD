@@ -20,6 +20,7 @@ type LeaderboardResponse = {
 
 const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
 const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
+const leaderboardRefreshMs = 5 * 60 * 1000;
 const fixedPrizePool = 1000;
 
 function movementSymbol(value: Player["movement"]) {
@@ -96,10 +97,17 @@ export default function LeaderboardPage() {
   const [countdown, setCountdown] = useState("--D : --H");
 
   useEffect(() => {
-    const controller = new AbortController();
+    let isActive = true;
+    let activeController: AbortController | null = null;
 
-    async function loadLeaderboard() {
-      setIsLoading(true);
+    async function loadLeaderboard(showLoading = true) {
+      activeController?.abort();
+      const controller = new AbortController();
+      activeController = controller;
+
+      if (showLoading) {
+        setIsLoading(true);
+      }
       setError(null);
 
       try {
@@ -114,22 +122,35 @@ export default function LeaderboardPage() {
           throw new Error(data.error ?? "Leaderboard data is unavailable.");
         }
 
-        setPlayers(Array.isArray(data.players) ? data.players : []);
+        if (isActive && !controller.signal.aborted) {
+          setPlayers(Array.isArray(data.players) ? data.players : []);
+        }
       } catch (loadError) {
-        if (!controller.signal.aborted) {
+        if (isActive && !controller.signal.aborted) {
           setPlayers([]);
           setError(loadError instanceof Error ? loadError.message : "Leaderboard data is unavailable.");
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (activeController === controller) {
+          activeController = null;
+        }
+
+        if (isActive && !controller.signal.aborted) {
           setIsLoading(false);
         }
       }
     }
 
     void loadLeaderboard();
+    const timer = window.setInterval(() => {
+      void loadLeaderboard(false);
+    }, leaderboardRefreshMs);
 
-    return () => controller.abort();
+    return () => {
+      isActive = false;
+      window.clearInterval(timer);
+      activeController?.abort();
+    };
   }, []);
 
   useEffect(() => {

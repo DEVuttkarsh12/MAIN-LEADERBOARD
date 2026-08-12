@@ -20,7 +20,9 @@ const handleKeys = ["handle", "slug", "userId", "userid", "id"];
 const rankKeys = ["rank", "position", "place"];
 const pointsKeys = ["points", "score", "total", "value", "amount", "wagered", "wager", "tickets"];
 const movementKeys = ["movement", "trend", "change", "rankChange", "positionChange"];
-const maxLeaderboardPlayers = 5;
+const nextPageKeys = ["next", "nextUrl", "nextURL", "next_page_url", "nextPageUrl"];
+const nextPageContainers = ["links", "pagination", "paging", "pageInfo", "meta"];
+const maxLeaderboardPages = 20;
 const prizesByRank: Record<number, number> = {
   1: 500,
   2: 250,
@@ -35,7 +37,25 @@ function isRecord(value: unknown): value is RawRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function extractEntries(payload: unknown): unknown[] {
+function hasKnownPlayerField(record: RawRecord): boolean {
+  return (
+    toText(readValue(record, nameKeys)) !== undefined ||
+    toText(readValue(record, handleKeys)) !== undefined ||
+    toNumber(readValue(record, rankKeys)) !== undefined ||
+    toNumber(readValue(record, pointsKeys)) !== undefined
+  );
+}
+
+function recordValuesAsEntries(record: RawRecord): unknown[] {
+  const values = Object.values(record);
+  if (values.length === 0 || !values.every(isRecord)) {
+    return [];
+  }
+
+  return values.some(hasKnownPlayerField) ? values : [];
+}
+
+function extractEntries(payload: unknown, visited = new Set<unknown>()): unknown[] {
   if (Array.isArray(payload)) {
     return payload;
   }
@@ -44,16 +64,43 @@ function extractEntries(payload: unknown): unknown[] {
     return [];
   }
 
+  if (visited.has(payload)) {
+    return [];
+  }
+  visited.add(payload);
+
   for (const key of arrayKeys) {
     const value = payload[key];
     if (Array.isArray(value)) {
       return value;
     }
+
     if (isRecord(value)) {
-      const nested = extractEntries(value);
+      const mappedEntries = recordValuesAsEntries(value);
+      if (mappedEntries.length > 0) {
+        return mappedEntries;
+      }
+
+      const nested = extractEntries(value, visited);
       if (nested.length > 0) {
         return nested;
       }
+    }
+  }
+
+  const mappedEntries = recordValuesAsEntries(payload);
+  if (mappedEntries.length > 0) {
+    return mappedEntries;
+  }
+
+  if (hasKnownPlayerField(payload)) {
+    return [payload];
+  }
+
+  for (const value of Object.values(payload)) {
+    const nested = extractEntries(value, visited);
+    if (nested.length > 0) {
+      return nested;
     }
   }
 
@@ -133,6 +180,83 @@ function prizeForRank(rank: number): string {
   return formatCurrency(prizesByRank[rank] ?? 0);
 }
 
+function textValue(value: unknown): string | undefined {
+  const text = toText(value);
+  if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "undefined") {
+    return undefined;
+  }
+
+  return text;
+}
+
+function toAbsoluteUrl(value: unknown, baseUrl: string): string | undefined {
+  const text = textValue(value);
+  if (!text) {
+    return undefined;
+  }
+
+  try {
+    return new URL(text, baseUrl).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function nextPageUrl(payload: unknown, currentUrl: string): string | undefined {
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  for (const key of nextPageKeys) {
+    const url = toAbsoluteUrl(payload[key], currentUrl);
+    if (url) {
+      return url;
+    }
+  }
+
+  for (const containerKey of nextPageContainers) {
+    const container = payload[containerKey];
+    if (!isRecord(container)) {
+      continue;
+    }
+
+    for (const key of nextPageKeys) {
+      const url = toAbsoluteUrl(container[key], currentUrl);
+      if (url) {
+        return url;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
+  const payloads: unknown[] = [];
+  const visitedUrls = new Set<string>();
+  let currentUrl: string | undefined = url;
+
+  while (currentUrl && !visitedUrls.has(currentUrl) && payloads.length < maxLeaderboardPages) {
+    visitedUrls.add(currentUrl);
+
+    const response = await fetch(currentUrl, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Leaderboard data is unavailable.");
+    }
+
+    const payload: unknown = await response.json();
+    payloads.push(payload);
+    currentUrl = nextPageUrl(payload, currentUrl);
+  }
+
+  return payloads;
+}
+
 function toMovement(value: unknown): LeaderboardPlayer["movement"] {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value > 0 ? "up" : value < 0 ? "down" : "same";
@@ -185,25 +309,12 @@ export async function GET() {
   }
 
   try {
-    const response = await fetch(CASEBATTLE_LEADERBOARD_URL, {
-      method: "GET",
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { players: [], error: "Leaderboard data is unavailable." },
-        { status: 502, headers: { "Cache-Control": "no-store" } },
-      );
-    }
-
-    const payload: unknown = await response.json();
-    const players = extractEntries(payload)
+    const payloads = await fetchLeaderboardPayloads(CASEBATTLE_LEADERBOARD_URL);
+    const players = payloads
+      .flatMap((payload) => extractEntries(payload))
       .map(normalizePlayer)
       .filter((player): player is LeaderboardPlayer => Boolean(player))
       .sort((a, b) => a.rank - b.rank)
-      .slice(0, maxLeaderboardPlayers)
       .map((player, index) => {
         const rank = index + 1;
         return { ...player, rank, winnings: prizeForRank(rank) };
