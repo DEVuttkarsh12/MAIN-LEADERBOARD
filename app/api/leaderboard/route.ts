@@ -52,6 +52,7 @@ class LeaderboardFetchError extends Error {
 }
 
 const CASEBATTLE_LEADERBOARD_URL = process.env.CASEBATTLE_LEADERBOARD_URL;
+const CASEBATTLE_LEADERBOARD_PASSWORD = process.env.CASEBATTLE_LEADERBOARD_PASSWORD?.trim();
 
 const arrayKeys = ["data", "leaderboard", "players", "results", "items", "entries", "rows", "records", "rankings", "scores", "users"];
 const nameKeys = ["username", "userName", "user_name", "displayName", "display_name", "nickname", "name", "playerName", "player_name", "player", "user"];
@@ -408,6 +409,10 @@ function normalizeConfiguredUrl(url: string): string {
     if (trimmedValue !== value) {
       requestUrl.searchParams.set(key, trimmedValue);
     }
+  }
+
+  if (CASEBATTLE_LEADERBOARD_PASSWORD) {
+    requestUrl.searchParams.set("password", CASEBATTLE_LEADERBOARD_PASSWORD);
   }
 
   return requestUrl.toString();
