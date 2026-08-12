@@ -18,8 +18,9 @@ type LeaderboardResponse = {
   error?: string;
 };
 
-const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime();
-const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
+const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
+const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
+const leaderboardSeasonEndTime = leaderboardSeasonStartTime + leaderboardSeasonDurationMs;
 const leaderboardRefreshMs = 5 * 60 * 1000;
 const fixedPrizePool = 1000;
 
@@ -53,12 +54,8 @@ function formatCurrency(value: number) {
 
 function seasonCountdown(now: Date) {
   const nowTime = now.getTime();
-  const elapsed = nowTime - leaderboardSeasonStartTime;
-  const currentCycleEnd =
-    elapsed < 0
-      ? leaderboardSeasonStartTime
-      : leaderboardSeasonStartTime + (Math.floor(elapsed / leaderboardSeasonDurationMs) + 1) * leaderboardSeasonDurationMs;
-  const remainingMs = Math.max(0, currentCycleEnd - nowTime);
+  const countdownTarget = nowTime < leaderboardSeasonStartTime ? leaderboardSeasonStartTime : leaderboardSeasonEndTime;
+  const remainingMs = Math.max(0, countdownTarget - nowTime);
   const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
   const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
 

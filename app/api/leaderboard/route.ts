@@ -73,8 +73,8 @@ const offsetKeys = ["offset", "skip"];
 const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
 const upstreamUpdatedAtKeys = ["updatedAt", "updated_at", "sourceUpdatedAt", "source_updated_at", "lastUpdated", "last_updated", "timestamp", "generatedAt", "generated_at"];
-const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime();
-const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
+const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
+const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
 const leaderboardPageSize = 100;
 const prizesByRank: Record<number, number> = {
@@ -235,16 +235,10 @@ function prizeForRank(rank: number): string {
   return formatCurrency(prizesByRank[rank] ?? 0);
 }
 
-function currentSeasonRange(now = Date.now()) {
-  const elapsed = now - leaderboardSeasonStartTime;
-  const seasonStart =
-    elapsed < 0
-      ? leaderboardSeasonStartTime
-      : leaderboardSeasonStartTime + Math.floor(elapsed / leaderboardSeasonDurationMs) * leaderboardSeasonDurationMs;
-
+function currentSeasonRange() {
   return {
-    from: seasonStart,
-    to: seasonStart + leaderboardSeasonDurationMs,
+    from: leaderboardSeasonStartTime,
+    to: leaderboardSeasonStartTime + leaderboardSeasonDurationMs,
   };
 }
 
