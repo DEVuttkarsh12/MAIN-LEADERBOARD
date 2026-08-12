@@ -67,6 +67,8 @@ const pointsKeys = [
 ];
 const movementKeys = ["movement", "trend", "change", "rankChange", "positionChange"];
 const nextPageKeys = ["next", "nextPage", "nextUrl", "nextURL", "next_page", "next_page_url", "nextPageUrl"];
+const cursorKeys = ["nextCursor", "next_cursor", "endCursor", "end_cursor", "cursor"];
+const hasNextPageKeys = ["hasNextPage", "has_next_page", "hasMore", "has_more"];
 const nextPageContainers = ["links", "pagination", "paging", "pageInfo", "meta", "urls"];
 const currentPageKeys = ["page", "currentPage", "current_page", "pageNumber", "page_number"];
 const offsetKeys = ["offset", "skip"];
@@ -77,6 +79,26 @@ const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime
 const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
 const leaderboardPageSize = 100;
+const nestedRecordKeys = [
+  "user",
+  "player",
+  "profile",
+  "node",
+  "entry",
+  "participant",
+  "account",
+  "member",
+  "customer",
+  "stats",
+  "statistics",
+  "metrics",
+  "totals",
+  "summary",
+  "wager",
+  "wagers",
+  "leaderboardEntry",
+  "leaderboard_entry",
+];
 const prizesByRank: Record<number, number> = {
   1: 500,
   2: 250,
@@ -162,25 +184,36 @@ function extractEntries(payload: unknown, visited = new Set<unknown>()): unknown
   return entries;
 }
 
-function readValue(record: RawRecord, keys: string[]): unknown {
+function readValue(record: RawRecord, keys: string[], depth = 0): unknown {
   for (const key of keys) {
     const value = record[key];
     if (value !== undefined && value !== null) {
+      if (isRecord(value) && depth < 3) {
+        const nestedValue = readValue(value, keys, depth + 1);
+        if (nestedValue !== undefined) {
+          return nestedValue;
+        }
+
+        continue;
+      }
+
       return value;
     }
   }
 
-  for (const nestedKey of ["user", "player", "profile"]) {
+  if (depth >= 3) {
+    return undefined;
+  }
+
+  for (const nestedKey of nestedRecordKeys) {
     const nested = record[nestedKey];
     if (!isRecord(nested)) {
       continue;
     }
 
-    for (const key of keys) {
-      const value = nested[key];
-      if (value !== undefined && value !== null) {
-        return value;
-      }
+    const value = readValue(nested, keys, depth + 1);
+    if (value !== undefined) {
+      return value;
     }
   }
 
@@ -196,7 +229,12 @@ function toNumber(value: unknown): number | undefined {
     return undefined;
   }
 
-  const parsed = Number(value.replace(/[$,\s]/g, ""));
+  const numericText = value.replace(/[$,\s]/g, "").match(/-?\d+(?:\.\d+)?/)?.[0];
+  if (!numericText) {
+    return undefined;
+  }
+
+  const parsed = Number(numericText);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
@@ -288,6 +326,27 @@ function nextPageUrl(payload: unknown, currentUrl: string): string | undefined {
   return undefined;
 }
 
+function readBooleanFromContainers(payload: unknown, keys: string[]): boolean | undefined {
+  for (const container of containerRecords(payload)) {
+    const value = readValue(container, keys);
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "true") {
+        return true;
+      }
+      if (normalized === "false") {
+        return false;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function readNumberFromContainers(payload: unknown, keys: string[]): number | undefined {
   for (const container of containerRecords(payload)) {
     const value = toNumber(readValue(container, keys));
@@ -318,6 +377,25 @@ function safeUrlDetails(url: string): SafeUrlDetails {
     pathname: requestUrl.pathname,
     queryKeys: Array.from(requestUrl.searchParams.keys()).sort(),
   };
+}
+
+function cursorNextPageUrl(payload: unknown, currentUrl: string): string | undefined {
+  const hasNextPage = readBooleanFromContainers(payload, hasNextPageKeys);
+  if (hasNextPage === false) {
+    return undefined;
+  }
+
+  const cursor = readTextFromContainers(payload, cursorKeys);
+  if (!cursor) {
+    return undefined;
+  }
+
+  const url = new URL(currentUrl);
+  url.searchParams.set("cursor", cursor);
+  url.searchParams.set("after", cursor);
+  setPageSizeParams(url);
+
+  return url.toString();
 }
 
 function pageDiagnostic(url: string, status: number, ok: boolean, payload?: unknown): FetchPageDiagnostic {
@@ -479,7 +557,7 @@ async function fetchLeaderboardPayloads(url: string): Promise<{ payloads: unknow
     const entryCount = extractEntries(payload).length;
     pages.push(pageDiagnostic(currentUrl, response.status, true, payload));
     payloads.push(payload);
-    currentUrl = nextPageUrl(payload, currentUrl) ?? fallbackNextPageUrl(payload, currentUrl, entryCount);
+    currentUrl = nextPageUrl(payload, currentUrl) ?? cursorNextPageUrl(payload, currentUrl) ?? fallbackNextPageUrl(payload, currentUrl, entryCount);
   }
 
   return { payloads, pages };
