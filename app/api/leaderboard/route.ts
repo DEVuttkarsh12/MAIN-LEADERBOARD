@@ -15,6 +15,7 @@ type SafeUrlDetails = {
 
 type FetchPageDiagnostic = SafeUrlDetails & {
   status: number;
+  statusText?: string;
   ok: boolean;
   entryCount: number;
   totalCount?: number;
@@ -38,6 +39,16 @@ export type LeaderboardPlayer = {
   winnings: string;
   movement: "up" | "down" | "same";
 };
+
+class LeaderboardFetchError extends Error {
+  pages: FetchPageDiagnostic[];
+
+  constructor(message: string, pages: FetchPageDiagnostic[]) {
+    super(message);
+    this.name = "LeaderboardFetchError";
+    this.pages = pages;
+  }
+}
 
 const CASEBATTLE_LEADERBOARD_URL = process.env.CASEBATTLE_LEADERBOARD_URL;
 
@@ -414,11 +425,12 @@ function cursorNextPageUrl(payload: unknown, currentUrl: string): string | undef
   return url.toString();
 }
 
-function pageDiagnostic(url: string, status: number, ok: boolean, payload?: unknown): FetchPageDiagnostic {
+function pageDiagnostic(url: string, response: Pick<Response, "ok" | "status" | "statusText">, payload?: unknown): FetchPageDiagnostic {
   return {
     ...safeUrlDetails(url),
-    status,
-    ok,
+    status: response.status,
+    statusText: response.statusText || undefined,
+    ok: response.ok,
     entryCount: payload === undefined ? 0 : extractEntries(payload).length,
     totalCount: payload === undefined ? undefined : readNumberFromContainers(payload, totalCountKeys),
     upstreamUpdatedAt: payload === undefined ? undefined : readTextFromContainers(payload, upstreamUpdatedAtKeys),
@@ -608,13 +620,13 @@ async function fetchLeaderboardPayloads(url: string): Promise<{ payloads: unknow
     });
 
     if (!response.ok) {
-      pages.push(pageDiagnostic(currentUrl, response.status, false));
-      throw new Error("Leaderboard data is unavailable.");
+      pages.push(pageDiagnostic(currentUrl, response));
+      throw new LeaderboardFetchError(`Leaderboard API returned ${response.status}.`, pages);
     }
 
     const payload: unknown = await response.json();
     const entryCount = extractEntries(payload).length;
-    pages.push(pageDiagnostic(currentUrl, response.status, true, payload));
+    pages.push(pageDiagnostic(currentUrl, response, payload));
     payloads.push(payload);
     currentUrl = nextPageUrl(payload, currentUrl) ?? cursorNextPageUrl(payload, currentUrl) ?? fallbackNextPageUrl(payload, currentUrl, entryCount);
   }
@@ -668,11 +680,12 @@ async function fetchBestLeaderboard(url: string) {
         selectedLabel = request.label;
       }
     } catch (error) {
+      const pages = error instanceof LeaderboardFetchError ? error.pages : [];
       attempts.push({
         label: request.label,
         playerCount: 0,
-        pageCount: 0,
-        pages: [],
+        pageCount: pages.length,
+        pages,
         error: error instanceof Error ? error.message : "Leaderboard data is unavailable.",
       });
     }
