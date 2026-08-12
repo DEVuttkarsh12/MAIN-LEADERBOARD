@@ -222,7 +222,7 @@ export default function LeaderboardPage() {
 
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
         <div><span>PLAYERS</span><strong>{formatCompactNumber(players.length)}</strong></div>
-        <div><span>WAGERED</span><strong>{formatCompactCurrency(topScore)}</strong></div>
+        <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(topScore)}</strong></div>
         <div><span>PRIZE POOL</span><strong>{formatCurrency(fixedPrizePool)}</strong></div>
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
       </div>
