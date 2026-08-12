@@ -87,10 +87,10 @@ const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "p
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
 const upstreamUpdatedAtKeys = ["updatedAt", "updated_at", "sourceUpdatedAt", "source_updated_at", "lastUpdated", "last_updated", "timestamp", "generatedAt", "generated_at"];
 const dateParamKeys = ["from", "to", "fromDate", "toDate", "startDate", "endDate"];
-const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
+const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00.000Z").getTime();
 const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
-const leaderboardPageSize = 100;
+const leaderboardPageSize = 50;
 const nestedRecordKeys = [
   "user",
   "player",
@@ -578,15 +578,15 @@ function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "i
 
 function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
   const requests: LeaderboardRequestUrl[] = [
-    { label: "live-limit-only", url: setLiveLimitParams(url) },
+    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(url) },
+    { label: "season-utc-wall-clock-limit-only", url: setSeasonUtcWallClockLimitParams(url) },
+    { label: "configured", url },
     { label: "configured-from-to-now-limit-only", url: setConfiguredFromToNowLimitParams(url) },
     { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(url, currentSeasonIsoRange().from) },
     { label: "season-utc-wall-clock-to-now-limit-only", url: setCurrentIsoLimitParams(url, currentSeasonUtcWallClockRange().from) },
-    { label: "configured", url },
     { label: "limit-only", url: setLimitParam(url) },
+    { label: "live-limit-only", url: setLiveLimitParams(url) },
     { label: "season-ms-limit-only", url: setSeasonLimitParams(url) },
-    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(url) },
-    { label: "season-utc-wall-clock-limit-only", url: setSeasonUtcWallClockLimitParams(url) },
     { label: "expanded-pagination", url: setPaginationParams(url) },
     { label: "season-ms", url: setReadOnlyLeaderboardParams(url, "milliseconds") },
     { label: "season-iso", url: setReadOnlyLeaderboardParams(url, "iso") },
