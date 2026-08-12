@@ -15,10 +15,29 @@ export type LeaderboardPlayer = {
 const CASEBATTLE_LEADERBOARD_URL = process.env.CASEBATTLE_LEADERBOARD_URL;
 
 const arrayKeys = ["data", "leaderboard", "players", "results", "items", "entries", "rows", "records", "rankings", "scores", "users"];
-const nameKeys = ["username", "userName", "displayName", "nickname", "name", "playerName", "player"];
-const handleKeys = ["handle", "slug", "userId", "userid", "id"];
+const nameKeys = ["username", "userName", "user_name", "displayName", "display_name", "nickname", "name", "playerName", "player_name", "player", "user"];
+const handleKeys = ["handle", "slug", "userId", "userid", "user_id", "playerId", "player_id", "accountId", "account_id", "uuid", "id"];
 const rankKeys = ["rank", "position", "place"];
-const pointsKeys = ["points", "score", "total", "value", "amount", "wagered", "wager", "tickets"];
+const pointsKeys = [
+  "points",
+  "score",
+  "total",
+  "value",
+  "amount",
+  "wagered",
+  "wager",
+  "tickets",
+  "totalWagered",
+  "total_wagered",
+  "wageredAmount",
+  "wagered_amount",
+  "totalAmountBet",
+  "total_amount_bet",
+  "amountBet",
+  "amount_bet",
+  "dollars",
+  "usd",
+];
 const movementKeys = ["movement", "trend", "change", "rankChange", "positionChange"];
 const nextPageKeys = ["next", "nextPage", "nextUrl", "nextURL", "next_page", "next_page_url", "nextPageUrl"];
 const nextPageContainers = ["links", "pagination", "paging", "pageInfo", "meta", "urls"];
@@ -29,6 +48,7 @@ const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime
 const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
 const leaderboardPageSize = 100;
+const leaderboardTargetPlayerCount = 2;
 const prizesByRank: Record<number, number> = {
   1: 500,
   2: 250,
@@ -44,7 +64,9 @@ function isRecord(value: unknown): value is RawRecord {
 }
 
 function hasKnownPlayerField(record: RawRecord): boolean {
-  return toText(readValue(record, nameKeys)) !== undefined || toText(readValue(record, handleKeys)) !== undefined;
+  const hasIdentity = toText(readValue(record, nameKeys)) !== undefined || toText(readValue(record, handleKeys)) !== undefined;
+  const hasRankOrPoints = toNumber(readValue(record, rankKeys)) !== undefined || toNumber(readValue(record, pointsKeys)) !== undefined;
+  return hasIdentity && hasRankOrPoints;
 }
 
 function recordValuesAsEntries(record: RawRecord): unknown[] {
@@ -251,12 +273,9 @@ function readNumberFromContainers(payload: unknown, keys: string[]): number | un
   return undefined;
 }
 
-function setReadOnlyLeaderboardParams(url: string) {
+function setPaginationParams(url: string) {
   const requestUrl = new URL(url);
-  const { from, to } = currentSeasonRange();
 
-  requestUrl.searchParams.set("from", String(from));
-  requestUrl.searchParams.set("to", String(to));
   requestUrl.searchParams.set("limit", String(leaderboardPageSize));
 
   if (!requestUrl.searchParams.has("page")) {
@@ -264,6 +283,48 @@ function setReadOnlyLeaderboardParams(url: string) {
   }
 
   return requestUrl.toString();
+}
+
+function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "iso" | "date") {
+  const requestUrl = new URL(url);
+  const { from, to } = currentSeasonRange();
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+
+  if (dateMode === "milliseconds") {
+    requestUrl.searchParams.set("from", String(from));
+    requestUrl.searchParams.set("to", String(to));
+  }
+
+  if (dateMode === "iso") {
+    requestUrl.searchParams.set("fromDate", fromDate.toISOString());
+    requestUrl.searchParams.set("toDate", toDate.toISOString());
+  }
+
+  if (dateMode === "date") {
+    requestUrl.searchParams.set("startDate", fromDate.toISOString().slice(0, 10));
+    requestUrl.searchParams.set("endDate", toDate.toISOString().slice(0, 10));
+  }
+
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  if (!requestUrl.searchParams.has("page")) {
+    requestUrl.searchParams.set("page", "1");
+  }
+
+  return requestUrl.toString();
+}
+
+function leaderboardRequestUrls(url: string): string[] {
+  return Array.from(
+    new Set([
+      url,
+      setPaginationParams(url),
+      setReadOnlyLeaderboardParams(url, "milliseconds"),
+      setReadOnlyLeaderboardParams(url, "iso"),
+      setReadOnlyLeaderboardParams(url, "date"),
+    ]),
+  );
 }
 
 function pageNumberUrl(currentUrl: string, page: number): string {
@@ -301,7 +362,7 @@ function fallbackNextPageUrl(payload: unknown, currentUrl: string, entryCount: n
 async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
   const payloads: unknown[] = [];
   const visitedUrls = new Set<string>();
-  let currentUrl: string | undefined = setReadOnlyLeaderboardParams(url);
+  let currentUrl: string | undefined = url;
 
   while (currentUrl && !visitedUrls.has(currentUrl) && payloads.length < maxLeaderboardPages) {
     visitedUrls.add(currentUrl);
@@ -323,6 +384,52 @@ async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
   }
 
   return payloads;
+}
+
+function normalizePlayers(payloads: unknown[]) {
+  return payloads
+    .flatMap((payload) => extractEntries(payload))
+    .map(normalizePlayer)
+    .filter((player): player is LeaderboardPlayer => Boolean(player))
+    .reduce<LeaderboardPlayer[]>((uniquePlayers, player) => {
+      const existingIndex = uniquePlayers.findIndex((existingPlayer) => playerKey(existingPlayer) === playerKey(player));
+      if (existingIndex === -1) {
+        uniquePlayers.push(player);
+        return uniquePlayers;
+      }
+
+      if (player.points > uniquePlayers[existingIndex].points) {
+        uniquePlayers[existingIndex] = player;
+      }
+
+      return uniquePlayers;
+    }, [])
+    .sort((a, b) => b.points - a.points || a.rank - b.rank)
+    .map((player, index) => {
+      const rank = index + 1;
+      return { ...player, rank, winnings: prizeForRank(rank) };
+    });
+}
+
+async function fetchBestLeaderboard(url: string) {
+  let bestPlayers: LeaderboardPlayer[] = [];
+
+  for (const requestUrl of leaderboardRequestUrls(url)) {
+    try {
+      const players = normalizePlayers(await fetchLeaderboardPayloads(requestUrl));
+      if (players.length > bestPlayers.length) {
+        bestPlayers = players;
+      }
+
+      if (bestPlayers.length >= leaderboardTargetPlayerCount) {
+        break;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return bestPlayers;
 }
 
 function toMovement(value: unknown): LeaderboardPlayer["movement"] {
@@ -381,29 +488,7 @@ export async function GET() {
   }
 
   try {
-    const payloads = await fetchLeaderboardPayloads(CASEBATTLE_LEADERBOARD_URL);
-    const players = payloads
-      .flatMap((payload) => extractEntries(payload))
-      .map(normalizePlayer)
-      .filter((player): player is LeaderboardPlayer => Boolean(player))
-      .reduce<LeaderboardPlayer[]>((uniquePlayers, player) => {
-        const existingIndex = uniquePlayers.findIndex((existingPlayer) => playerKey(existingPlayer) === playerKey(player));
-        if (existingIndex === -1) {
-          uniquePlayers.push(player);
-          return uniquePlayers;
-        }
-
-        if (player.points > uniquePlayers[existingIndex].points) {
-          uniquePlayers[existingIndex] = player;
-        }
-
-        return uniquePlayers;
-      }, [])
-      .sort((a, b) => b.points - a.points || a.rank - b.rank)
-      .map((player, index) => {
-        const rank = index + 1;
-        return { ...player, rank, winnings: prizeForRank(rank) };
-      });
+    const players = await fetchBestLeaderboard(CASEBATTLE_LEADERBOARD_URL);
 
     return NextResponse.json(
       { players, season: currentSeasonRange(), sourceUpdatedAt: new Date().toISOString() },
