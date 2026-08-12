@@ -86,6 +86,7 @@ const offsetKeys = ["offset", "skip"];
 const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
 const upstreamUpdatedAtKeys = ["updatedAt", "updated_at", "sourceUpdatedAt", "source_updated_at", "lastUpdated", "last_updated", "timestamp", "generatedAt", "generated_at"];
+const dateParamKeys = ["from", "to", "fromDate", "toDate", "startDate", "endDate"];
 const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
 const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
@@ -453,6 +454,21 @@ function setLimitParam(url: string) {
   return requestUrl.toString();
 }
 
+function deleteDateParams(url: URL) {
+  for (const key of dateParamKeys) {
+    url.searchParams.delete(key);
+  }
+}
+
+function setLiveLimitParams(url: string) {
+  const requestUrl = new URL(url);
+
+  deleteDateParams(requestUrl);
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  return requestUrl.toString();
+}
+
 function setPaginationParams(url: string) {
   const requestUrl = new URL(url);
 
@@ -502,6 +518,30 @@ function setSeasonUtcWallClockLimitParams(url: string) {
   return requestUrl.toString();
 }
 
+function setCurrentIsoLimitParams(url: string, from: string) {
+  const requestUrl = new URL(url);
+
+  requestUrl.searchParams.set("from", from);
+  requestUrl.searchParams.set("to", new Date().toISOString());
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  return requestUrl.toString();
+}
+
+function setConfiguredFromToNowLimitParams(url: string) {
+  const requestUrl = new URL(url);
+  const configuredFrom = requestUrl.searchParams.get("from");
+
+  if (!configuredFrom) {
+    return setCurrentIsoLimitParams(url, currentSeasonIsoRange().from);
+  }
+
+  requestUrl.searchParams.set("to", new Date().toISOString());
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  return requestUrl.toString();
+}
+
 function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "iso" | "date") {
   const requestUrl = new URL(url);
   const { from, to } = currentSeasonRange();
@@ -538,6 +578,10 @@ function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "i
 
 function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
   const requests: LeaderboardRequestUrl[] = [
+    { label: "live-limit-only", url: setLiveLimitParams(url) },
+    { label: "configured-from-to-now-limit-only", url: setConfiguredFromToNowLimitParams(url) },
+    { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(url, currentSeasonIsoRange().from) },
+    { label: "season-utc-wall-clock-to-now-limit-only", url: setCurrentIsoLimitParams(url, currentSeasonUtcWallClockRange().from) },
     { label: "configured", url },
     { label: "limit-only", url: setLimitParam(url) },
     { label: "season-ms-limit-only", url: setSeasonLimitParams(url) },
