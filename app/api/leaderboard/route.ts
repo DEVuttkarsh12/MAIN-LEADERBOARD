@@ -14,15 +14,21 @@ export type LeaderboardPlayer = {
 
 const CASEBATTLE_LEADERBOARD_URL = process.env.CASEBATTLE_LEADERBOARD_URL;
 
-const arrayKeys = ["data", "leaderboard", "players", "results", "items", "entries"];
+const arrayKeys = ["data", "leaderboard", "players", "results", "items", "entries", "rows", "records", "rankings", "scores", "users"];
 const nameKeys = ["username", "userName", "displayName", "nickname", "name", "playerName", "player"];
 const handleKeys = ["handle", "slug", "userId", "userid", "id"];
 const rankKeys = ["rank", "position", "place"];
 const pointsKeys = ["points", "score", "total", "value", "amount", "wagered", "wager", "tickets"];
 const movementKeys = ["movement", "trend", "change", "rankChange", "positionChange"];
-const nextPageKeys = ["next", "nextUrl", "nextURL", "next_page_url", "nextPageUrl"];
-const nextPageContainers = ["links", "pagination", "paging", "pageInfo", "meta"];
+const nextPageKeys = ["next", "nextPage", "nextUrl", "nextURL", "next_page", "next_page_url", "nextPageUrl"];
+const nextPageContainers = ["links", "pagination", "paging", "pageInfo", "meta", "urls"];
+const currentPageKeys = ["page", "currentPage", "current_page", "pageNumber", "page_number"];
+const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
+const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
+const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime();
+const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
+const leaderboardPageSize = 100;
 const prizesByRank: Record<number, number> = {
   1: 500,
   2: 250,
@@ -38,12 +44,7 @@ function isRecord(value: unknown): value is RawRecord {
 }
 
 function hasKnownPlayerField(record: RawRecord): boolean {
-  return (
-    toText(readValue(record, nameKeys)) !== undefined ||
-    toText(readValue(record, handleKeys)) !== undefined ||
-    toNumber(readValue(record, rankKeys)) !== undefined ||
-    toNumber(readValue(record, pointsKeys)) !== undefined
-  );
+  return toText(readValue(record, nameKeys)) !== undefined || toText(readValue(record, handleKeys)) !== undefined;
 }
 
 function recordValuesAsEntries(record: RawRecord): unknown[] {
@@ -180,6 +181,19 @@ function prizeForRank(rank: number): string {
   return formatCurrency(prizesByRank[rank] ?? 0);
 }
 
+function currentSeasonRange(now = Date.now()) {
+  const elapsed = now - leaderboardSeasonStartTime;
+  const seasonStart =
+    elapsed < 0
+      ? leaderboardSeasonStartTime
+      : leaderboardSeasonStartTime + Math.floor(elapsed / leaderboardSeasonDurationMs) * leaderboardSeasonDurationMs;
+
+  return {
+    from: seasonStart,
+    to: seasonStart + leaderboardSeasonDurationMs,
+  };
+}
+
 function textValue(value: unknown): string | undefined {
   const text = toText(value);
   if (!text || text.toLowerCase() === "null" || text.toLowerCase() === "undefined") {
@@ -187,6 +201,17 @@ function textValue(value: unknown): string | undefined {
   }
 
   return text;
+}
+
+function containerRecords(payload: unknown): RawRecord[] {
+  if (!isRecord(payload)) {
+    return [];
+  }
+
+  return [
+    payload,
+    ...nextPageContainers.map((key) => payload[key]).filter(isRecord),
+  ];
 }
 
 function toAbsoluteUrl(value: unknown, baseUrl: string): string | undefined {
@@ -203,23 +228,7 @@ function toAbsoluteUrl(value: unknown, baseUrl: string): string | undefined {
 }
 
 function nextPageUrl(payload: unknown, currentUrl: string): string | undefined {
-  if (!isRecord(payload)) {
-    return undefined;
-  }
-
-  for (const key of nextPageKeys) {
-    const url = toAbsoluteUrl(payload[key], currentUrl);
-    if (url) {
-      return url;
-    }
-  }
-
-  for (const containerKey of nextPageContainers) {
-    const container = payload[containerKey];
-    if (!isRecord(container)) {
-      continue;
-    }
-
+  for (const container of containerRecords(payload)) {
     for (const key of nextPageKeys) {
       const url = toAbsoluteUrl(container[key], currentUrl);
       if (url) {
@@ -231,10 +240,68 @@ function nextPageUrl(payload: unknown, currentUrl: string): string | undefined {
   return undefined;
 }
 
+function readNumberFromContainers(payload: unknown, keys: string[]): number | undefined {
+  for (const container of containerRecords(payload)) {
+    const value = toNumber(readValue(container, keys));
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function setReadOnlyLeaderboardParams(url: string) {
+  const requestUrl = new URL(url);
+  const { from, to } = currentSeasonRange();
+
+  requestUrl.searchParams.set("from", String(from));
+  requestUrl.searchParams.set("to", String(to));
+  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+
+  if (!requestUrl.searchParams.has("page")) {
+    requestUrl.searchParams.set("page", "1");
+  }
+
+  return requestUrl.toString();
+}
+
+function pageNumberUrl(currentUrl: string, page: number): string {
+  const url = new URL(currentUrl);
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("limit", String(leaderboardPageSize));
+  return url.toString();
+}
+
+function currentPageNumber(payload: unknown, currentUrl: string): number {
+  const pageFromPayload = readNumberFromContainers(payload, currentPageKeys);
+  if (pageFromPayload !== undefined) {
+    return Math.max(1, Math.trunc(pageFromPayload));
+  }
+
+  const pageFromUrl = Number(new URL(currentUrl).searchParams.get("page"));
+  return Number.isFinite(pageFromUrl) && pageFromUrl > 0 ? Math.trunc(pageFromUrl) : 1;
+}
+
+function fallbackNextPageUrl(payload: unknown, currentUrl: string, entryCount: number): string | undefined {
+  const currentPage = currentPageNumber(payload, currentUrl);
+  const totalPages = readNumberFromContainers(payload, totalPagesKeys);
+  if (totalPages !== undefined && currentPage < totalPages) {
+    return pageNumberUrl(currentUrl, currentPage + 1);
+  }
+
+  const totalCount = readNumberFromContainers(payload, totalCountKeys);
+  if (totalCount !== undefined && currentPage * leaderboardPageSize < totalCount) {
+    return pageNumberUrl(currentUrl, currentPage + 1);
+  }
+
+  return entryCount >= leaderboardPageSize ? pageNumberUrl(currentUrl, currentPage + 1) : undefined;
+}
+
 async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
   const payloads: unknown[] = [];
   const visitedUrls = new Set<string>();
-  let currentUrl: string | undefined = url;
+  let currentUrl: string | undefined = setReadOnlyLeaderboardParams(url);
 
   while (currentUrl && !visitedUrls.has(currentUrl) && payloads.length < maxLeaderboardPages) {
     visitedUrls.add(currentUrl);
@@ -250,8 +317,9 @@ async function fetchLeaderboardPayloads(url: string): Promise<unknown[]> {
     }
 
     const payload: unknown = await response.json();
+    const entryCount = extractEntries(payload).length;
     payloads.push(payload);
-    currentUrl = nextPageUrl(payload, currentUrl);
+    currentUrl = nextPageUrl(payload, currentUrl) ?? fallbackNextPageUrl(payload, currentUrl, entryCount);
   }
 
   return payloads;
@@ -300,6 +368,10 @@ function normalizePlayer(entry: unknown, index: number): LeaderboardPlayer | und
   };
 }
 
+function playerKey(player: LeaderboardPlayer): string {
+  return `${player.handle.toLowerCase()}|${player.name.toLowerCase()}`;
+}
+
 export async function GET() {
   if (!CASEBATTLE_LEADERBOARD_URL) {
     return NextResponse.json(
@@ -314,14 +386,27 @@ export async function GET() {
       .flatMap((payload) => extractEntries(payload))
       .map(normalizePlayer)
       .filter((player): player is LeaderboardPlayer => Boolean(player))
-      .sort((a, b) => a.rank - b.rank)
+      .reduce<LeaderboardPlayer[]>((uniquePlayers, player) => {
+        const existingIndex = uniquePlayers.findIndex((existingPlayer) => playerKey(existingPlayer) === playerKey(player));
+        if (existingIndex === -1) {
+          uniquePlayers.push(player);
+          return uniquePlayers;
+        }
+
+        if (player.points > uniquePlayers[existingIndex].points) {
+          uniquePlayers[existingIndex] = player;
+        }
+
+        return uniquePlayers;
+      }, [])
+      .sort((a, b) => b.points - a.points || a.rank - b.rank)
       .map((player, index) => {
         const rank = index + 1;
         return { ...player, rank, winnings: prizeForRank(rank) };
       });
 
     return NextResponse.json(
-      { players, sourceUpdatedAt: new Date().toISOString() },
+      { players, season: currentSeasonRange(), sourceUpdatedAt: new Date().toISOString() },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {

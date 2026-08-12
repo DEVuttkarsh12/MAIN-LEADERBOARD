@@ -18,8 +18,8 @@ type LeaderboardResponse = {
   error?: string;
 };
 
-const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
-const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
+const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime();
+const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
 const leaderboardRefreshMs = 5 * 60 * 1000;
 const fixedPrizePool = 1000;
 
