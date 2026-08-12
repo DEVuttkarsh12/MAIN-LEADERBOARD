@@ -42,13 +42,13 @@ const movementKeys = ["movement", "trend", "change", "rankChange", "positionChan
 const nextPageKeys = ["next", "nextPage", "nextUrl", "nextURL", "next_page", "next_page_url", "nextPageUrl"];
 const nextPageContainers = ["links", "pagination", "paging", "pageInfo", "meta", "urls"];
 const currentPageKeys = ["page", "currentPage", "current_page", "pageNumber", "page_number"];
+const offsetKeys = ["offset", "skip"];
 const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
 const leaderboardSeasonStartTime = new Date("2026-08-10T22:00:00+05:30").getTime();
 const leaderboardSeasonDurationMs = 7 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
 const leaderboardPageSize = 100;
-const leaderboardTargetPlayerCount = 2;
 const prizesByRank: Record<number, number> = {
   1: 500,
   2: 250,
@@ -92,42 +92,44 @@ function extractEntries(payload: unknown, visited = new Set<unknown>()): unknown
   }
   visited.add(payload);
 
+  const entries: unknown[] = [];
+
   for (const key of arrayKeys) {
     const value = payload[key];
     if (Array.isArray(value)) {
-      return value;
+      entries.push(...value);
+      continue;
     }
 
     if (isRecord(value)) {
       const mappedEntries = recordValuesAsEntries(value);
       if (mappedEntries.length > 0) {
-        return mappedEntries;
+        entries.push(...mappedEntries);
       }
 
-      const nested = extractEntries(value, visited);
-      if (nested.length > 0) {
-        return nested;
-      }
+      entries.push(...extractEntries(value, visited));
     }
   }
 
   const mappedEntries = recordValuesAsEntries(payload);
   if (mappedEntries.length > 0) {
-    return mappedEntries;
+    entries.push(...mappedEntries);
   }
 
   if (hasKnownPlayerField(payload)) {
-    return [payload];
+    entries.push(payload);
   }
 
   for (const value of Object.values(payload)) {
-    const nested = extractEntries(value, visited);
-    if (nested.length > 0) {
-      return nested;
+    if (Array.isArray(value)) {
+      entries.push(...value);
+      continue;
     }
+
+    entries.push(...extractEntries(value, visited));
   }
 
-  return [];
+  return entries;
 }
 
 function readValue(record: RawRecord, keys: string[]): unknown {
@@ -273,13 +275,27 @@ function readNumberFromContainers(payload: unknown, keys: string[]): number | un
   return undefined;
 }
 
+function setPageSizeParams(url: URL) {
+  url.searchParams.set("limit", String(leaderboardPageSize));
+  url.searchParams.set("perPage", String(leaderboardPageSize));
+  url.searchParams.set("per_page", String(leaderboardPageSize));
+  url.searchParams.set("pageSize", String(leaderboardPageSize));
+  url.searchParams.set("page_size", String(leaderboardPageSize));
+  url.searchParams.set("size", String(leaderboardPageSize));
+  url.searchParams.set("take", String(leaderboardPageSize));
+}
+
 function setPaginationParams(url: string) {
   const requestUrl = new URL(url);
 
-  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+  setPageSizeParams(requestUrl);
 
   if (!requestUrl.searchParams.has("page")) {
     requestUrl.searchParams.set("page", "1");
+  }
+
+  if (!requestUrl.searchParams.has("offset")) {
+    requestUrl.searchParams.set("offset", "0");
   }
 
   return requestUrl.toString();
@@ -306,10 +322,14 @@ function setReadOnlyLeaderboardParams(url: string, dateMode: "milliseconds" | "i
     requestUrl.searchParams.set("endDate", toDate.toISOString().slice(0, 10));
   }
 
-  requestUrl.searchParams.set("limit", String(leaderboardPageSize));
+  setPageSizeParams(requestUrl);
 
   if (!requestUrl.searchParams.has("page")) {
     requestUrl.searchParams.set("page", "1");
+  }
+
+  if (!requestUrl.searchParams.has("offset")) {
+    requestUrl.searchParams.set("offset", "0");
   }
 
   return requestUrl.toString();
@@ -327,11 +347,22 @@ function leaderboardRequestUrls(url: string): string[] {
   );
 }
 
-function pageNumberUrl(currentUrl: string, page: number): string {
+function pageNumberUrl(currentUrl: string, page: number, offset = (page - 1) * leaderboardPageSize): string {
   const url = new URL(currentUrl);
   url.searchParams.set("page", String(page));
-  url.searchParams.set("limit", String(leaderboardPageSize));
+  url.searchParams.set("offset", String(offset));
+  setPageSizeParams(url);
   return url.toString();
+}
+
+function currentOffset(payload: unknown, currentUrl: string): number {
+  const offsetFromPayload = readNumberFromContainers(payload, offsetKeys);
+  if (offsetFromPayload !== undefined) {
+    return Math.max(0, Math.trunc(offsetFromPayload));
+  }
+
+  const offsetFromUrl = Number(new URL(currentUrl).searchParams.get("offset"));
+  return Number.isFinite(offsetFromUrl) && offsetFromUrl > 0 ? Math.trunc(offsetFromUrl) : 0;
 }
 
 function currentPageNumber(payload: unknown, currentUrl: string): number {
@@ -346,14 +377,15 @@ function currentPageNumber(payload: unknown, currentUrl: string): number {
 
 function fallbackNextPageUrl(payload: unknown, currentUrl: string, entryCount: number): string | undefined {
   const currentPage = currentPageNumber(payload, currentUrl);
+  const offset = currentOffset(payload, currentUrl);
   const totalPages = readNumberFromContainers(payload, totalPagesKeys);
   if (totalPages !== undefined && currentPage < totalPages) {
     return pageNumberUrl(currentUrl, currentPage + 1);
   }
 
   const totalCount = readNumberFromContainers(payload, totalCountKeys);
-  if (totalCount !== undefined && currentPage * leaderboardPageSize < totalCount) {
-    return pageNumberUrl(currentUrl, currentPage + 1);
+  if (totalCount !== undefined && offset + entryCount < totalCount) {
+    return pageNumberUrl(currentUrl, currentPage + 1, offset + Math.max(1, entryCount));
   }
 
   return entryCount >= leaderboardPageSize ? pageNumberUrl(currentUrl, currentPage + 1) : undefined;
@@ -420,10 +452,6 @@ async function fetchBestLeaderboard(url: string) {
       if (players.length > bestPlayers.length) {
         bestPlayers = players;
       }
-
-      if (bestPlayers.length >= leaderboardTargetPlayerCount) {
-        break;
-      }
     } catch {
       continue;
     }
@@ -476,7 +504,10 @@ function normalizePlayer(entry: unknown, index: number): LeaderboardPlayer | und
 }
 
 function playerKey(player: LeaderboardPlayer): string {
-  return `${player.handle.toLowerCase()}|${player.name.toLowerCase()}`;
+  const normalizedHandle = player.handle.toLowerCase();
+  const normalizedName = player.name.toLowerCase();
+
+  return normalizedHandle.startsWith("#") ? `name:${normalizedName}` : `handle:${normalizedHandle}`;
 }
 
 export async function GET() {
