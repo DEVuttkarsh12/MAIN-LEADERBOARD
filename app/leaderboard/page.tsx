@@ -25,8 +25,8 @@ type SeasonWindow = {
 };
 
 const fallbackSeasonWindow = {
-  from: new Date("2026-08-11T22:00:00.000Z").getTime(),
-  to: new Date("2026-08-25T21:59:59.999Z").getTime(),
+  from: new Date("2026-08-11T00:00:00.000Z").getTime(),
+  to: new Date("2026-08-24T23:59:59.999Z").getTime(),
 };
 const leaderboardRefreshMs = 5 * 60 * 1000;
 const fixedPrizePool = 1000;
