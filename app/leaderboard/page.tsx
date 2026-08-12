@@ -15,12 +15,19 @@ type Player = {
 
 type LeaderboardResponse = {
   players?: Player[];
+  season?: SeasonWindow;
   error?: string;
 };
 
-const leaderboardSeasonStartTime = new Date("2026-08-11T22:00:00+05:30").getTime();
-const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
-const leaderboardSeasonEndTime = leaderboardSeasonStartTime + leaderboardSeasonDurationMs;
+type SeasonWindow = {
+  from: number;
+  to: number;
+};
+
+const fallbackSeasonWindow = {
+  from: new Date("2026-08-11T22:00:00.000Z").getTime(),
+  to: new Date("2026-08-25T21:59:59.999Z").getTime(),
+};
 const leaderboardRefreshMs = 5 * 60 * 1000;
 const fixedPrizePool = 1000;
 
@@ -52,9 +59,22 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function seasonCountdown(now: Date) {
+function validSeasonWindow(season?: SeasonWindow): SeasonWindow {
+  if (
+    season &&
+    Number.isFinite(season.from) &&
+    Number.isFinite(season.to) &&
+    season.to > season.from
+  ) {
+    return season;
+  }
+
+  return fallbackSeasonWindow;
+}
+
+function seasonCountdown(now: Date, season: SeasonWindow) {
   const nowTime = now.getTime();
-  const countdownTarget = nowTime < leaderboardSeasonStartTime ? leaderboardSeasonStartTime : leaderboardSeasonEndTime;
+  const countdownTarget = nowTime < season.from ? season.from : season.to;
   const remainingMs = Math.max(0, countdownTarget - nowTime);
   const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
   const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
@@ -92,6 +112,7 @@ export default function LeaderboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState("--D : --H");
+  const [season, setSeason] = useState<SeasonWindow>(fallbackSeasonWindow);
 
   useEffect(() => {
     let isActive = true;
@@ -121,6 +142,7 @@ export default function LeaderboardPage() {
 
         if (isActive && !controller.signal.aborted) {
           setPlayers(Array.isArray(data.players) ? data.players : []);
+          setSeason(validSeasonWindow(data.season));
         }
       } catch (loadError) {
         if (isActive && !controller.signal.aborted) {
@@ -152,14 +174,14 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     function refreshCountdown() {
-      setCountdown(seasonCountdown(new Date()));
+      setCountdown(seasonCountdown(new Date(), season));
     }
 
     refreshCountdown();
     const timer = window.setInterval(refreshCountdown, 60 * 1000);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [season]);
 
   const podiumOrder = useMemo(() => {
     const topThree = players.slice(0, 3);
