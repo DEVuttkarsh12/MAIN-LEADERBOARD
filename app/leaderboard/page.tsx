@@ -189,7 +189,7 @@ export default function LeaderboardPage() {
   }, [players]);
 
   const risingCount = useMemo(() => players.filter((player) => player.movement === "up").length, [players]);
-  const topScore = players[0]?.points ?? 0;
+  const totalWagered = useMemo(() => players.reduce((sum, player) => sum + player.points, 0), [players]);
 
   const filteredPlayers = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -222,7 +222,7 @@ export default function LeaderboardPage() {
 
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
         <div><span>PLAYERS</span><strong>{formatCompactNumber(players.length)}</strong></div>
-        <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(topScore)}</strong></div>
+        <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(totalWagered)}</strong></div>
         <div><span>PRIZE POOL</span><strong>{formatCurrency(fixedPrizePool)}</strong></div>
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
       </div>
