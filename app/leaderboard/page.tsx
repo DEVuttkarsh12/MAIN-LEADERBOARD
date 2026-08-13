@@ -108,7 +108,7 @@ function maskedPlayerName(name: string) {
 export default function LeaderboardPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [query, setQuery] = useState("");
-  const [view, setView] = useState<"all" | "rising" | "top5">("all");
+  const [view, setView] = useState<"all" | "top5">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState("--D : --H");
@@ -188,14 +188,13 @@ export default function LeaderboardPage() {
     return [topThree[1], topThree[0], topThree[2]].filter((player): player is Player => Boolean(player));
   }, [players]);
 
-  const risingCount = useMemo(() => players.filter((player) => player.movement === "up").length, [players]);
   const totalWagered = useMemo(() => players.reduce((sum, player) => sum + player.points, 0), [players]);
 
   const filteredPlayers = useMemo(() => {
     const term = query.trim().toLowerCase();
     return players.filter((player) => {
       const matchesSearch = !term || `${player.name} ${player.handle}`.toLowerCase().includes(term);
-      const matchesView = view === "all" || (view === "rising" && player.movement === "up") || (view === "top5" && player.rank <= 5);
+      const matchesView = view === "all" || (view === "top5" && player.rank <= 5);
       return matchesSearch && matchesView;
     });
   }, [players, query, view]);
@@ -259,7 +258,6 @@ export default function LeaderboardPage() {
 
         <div className="ranking-filters" aria-label="Filter rankings">
           <button type="button" className={view === "all" ? "active" : ""} onClick={() => setView("all")} aria-pressed={view === "all"}>All <span>{players.length}</span></button>
-          <button type="button" className={view === "rising" ? "active" : ""} onClick={() => setView("rising")} aria-pressed={view === "rising"}>Rising <span>{risingCount}</span></button>
           <button type="button" className={view === "top5" ? "active" : ""} onClick={() => setView("top5")} aria-pressed={view === "top5"}>Top 5 <span>{Math.min(players.length, 5)}</span></button>
         </div>
 
