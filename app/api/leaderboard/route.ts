@@ -116,8 +116,9 @@ const prizesByRank: Record<number, number> = {
   1: 500,
   2: 250,
   3: 100,
-  4: 50,
-  5: 25,
+  4: 75,
+  5: 50,
+  6: 25,
 };
 
 export const dynamic = "force-dynamic";
