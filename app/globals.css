@@ -304,6 +304,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ranking-filters button:hover, .ranking-filters button.active { color: var(--white); }
 .ranking-filters button.active::after { right: 0; }
 .ranking-filters button span { margin-left: 7px; color: var(--yellow); }
+.ranking-filters .previous-leaderboard-trigger { margin-left: auto; border-right: 1px solid var(--line); color: #070707; background: var(--yellow); }
+.ranking-filters .previous-leaderboard-trigger:hover { color: #070707; background: var(--yellow-hot); }
+.ranking-filters .previous-leaderboard-trigger::after { background: #070707; }
+.ranking-filters .previous-leaderboard-trigger span { color: #070707; }
 .rank-list-header { display: grid; grid-template-columns: 1.45fr .55fr .55fr; gap: 20px; padding: 0 24px 13px; color: #babac0; font-family: var(--label); font-size: 13px; font-weight: 700; letter-spacing: .08em; }
 .rank-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .rank-row { position: relative; min-height: 88px; display: grid; grid-template-columns: 1.45fr .55fr .55fr; gap: 20px; align-items: center; padding: 13px 24px 13px 15px; border-left: 5px solid #34353a; background: linear-gradient(90deg, #161719, #0e0e0f); clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 0 100%); transition: transform 160ms ease, border-color 160ms ease, background 160ms ease; }
@@ -323,6 +327,19 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .points-stat { color: var(--white); font-weight: 800; }
 .winning-stat { color: var(--yellow); font-weight: 800; }
 .no-results { min-height: 180px; display: grid; place-items: center; border: 1px dashed rgba(255,217,0,.35); color: var(--yellow); font-family: var(--display); font-size: 24px; letter-spacing: .03em; }
+
+.previous-leaderboard-backdrop { position: fixed; z-index: 200; inset: 0; display: grid; place-items: center; padding: 34px; background: rgba(0,0,0,.78); backdrop-filter: blur(13px); }
+.previous-leaderboard-modal { position: relative; width: min(1180px, 100%); max-height: min(820px, calc(100vh - 68px)); overflow: auto; padding: 34px; border: 1px solid rgba(255,255,255,.22); background: linear-gradient(145deg, #191a1d, #080809 68%); box-shadow: 14px 14px 0 rgba(255,217,0,.65), 0 26px 80px rgba(0,0,0,.72); clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 28px 100%, 0 calc(100% - 28px)); }
+.previous-leaderboard-modal::before { content: ""; pointer-events: none; position: absolute; inset: 0; opacity: .06; background-image: linear-gradient(rgba(255,255,255,.24) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.24) 1px, transparent 1px); background-size: 48px 48px; }
+.previous-modal-close { position: sticky; z-index: 4; top: 0; float: right; width: 48px; height: 48px; display: grid; place-items: center; border: 0; color: #080808; background: var(--yellow); font-family: var(--display); font-size: 36px; line-height: 1; cursor: pointer; box-shadow: 5px 5px 0 #424349; }
+.previous-modal-header { position: relative; z-index: 2; display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin: 8px 64px 30px 0; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.previous-kicker { color: var(--yellow); font-family: var(--label); font-size: 12px; font-weight: 800; letter-spacing: .11em; }
+.previous-modal-header h2 { margin: 12px 0 0; font-family: var(--display); font-size: clamp(58px, 7vw, 96px); font-weight: 700; line-height: .82; letter-spacing: -.012em; text-transform: uppercase; }
+.previous-modal-header h2 em { color: var(--yellow); font-style: normal; }
+.previous-modal-header strong { color: var(--silver); font-family: var(--label); font-size: 13px; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+.previous-rank-list-header { position: relative; z-index: 2; display: grid; grid-template-columns: 1.45fr .55fr .55fr; gap: 20px; padding: 0 24px 13px; color: #babac0; font-family: var(--label); font-size: 13px; font-weight: 700; letter-spacing: .08em; }
+.previous-rank-list { position: relative; z-index: 2; max-height: 520px; overflow: auto; padding-right: 6px; }
+.previous-no-results { position: relative; z-index: 2; }
 
 .site-footer { border-top: 1px solid var(--line); background: #080809; }
 .footer-main { width: min(1480px, calc(100% - 64px)); min-height: 300px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto auto; gap: 90px; align-items: center; padding: 65px 0; }
@@ -364,6 +381,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .podium-grid { gap: 12px; }
   .rank-list-header { display: none; }
   .rank-row { grid-template-columns: 1.3fr repeat(2, .6fr); }
+  .previous-rank-list-header { display: none; }
   .footer-main { gap: 45px; }
 }
 
@@ -433,6 +451,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .funky-search { width: calc(100% - 8px); }
   .ranking-filters { overflow-x: auto; }
   .ranking-filters button { flex: 0 0 auto; }
+  .ranking-filters .previous-leaderboard-trigger { margin-left: 0; }
   .filter-season { display: none; }
   .rank-list { gap: 11px; }
   .rank-row { min-height: 145px; grid-template-columns: repeat(2, 1fr); gap: 15px 8px; padding: 17px 17px 17px 13px; }
@@ -441,6 +460,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .rank-avatar { width: 40px; height: 40px; }
   .rank-stat { display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
   .rank-stat small { display: block; color: #85868c; font-size: 11px; text-transform: uppercase; }
+  .previous-leaderboard-backdrop { align-items: start; padding: 18px 15px 90px; overflow: auto; }
+  .previous-leaderboard-modal { max-height: none; padding: 24px 15px 20px; box-shadow: 8px 8px 0 rgba(255,217,0,.65); }
+  .previous-modal-close { width: 42px; height: 42px; font-size: 31px; }
+  .previous-modal-header { align-items: flex-start; flex-direction: column; gap: 14px; margin: 10px 52px 24px 0; }
+  .previous-modal-header h2 { font-size: clamp(50px, 16vw, 72px); }
+  .previous-modal-header strong { white-space: normal; }
+  .previous-rank-list { max-height: none; padding-right: 0; }
   .footer-main { grid-template-columns: 1fr 1fr; gap: 55px 25px; padding: 60px 0; }
   .footer-brand { grid-column: 1 / -1; }
   .footer-bottom { min-height: 75px; align-items: flex-start; flex-direction: column; justify-content: center; gap: 7px; padding: 0 15px; }

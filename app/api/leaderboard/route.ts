@@ -7,6 +7,8 @@ type LeaderboardRequestUrl = {
   url: string;
 };
 
+type LeaderboardPeriod = "current" | "previous";
+
 type SafeUrlDetails = {
   host: string;
   pathname: string;
@@ -286,15 +288,20 @@ function prizeForRank(rank: number): string {
   return formatCurrency(prizesByRank[rank] ?? 0);
 }
 
-function currentSeasonRange() {
+function seasonRange(period: LeaderboardPeriod = "current") {
+  const startTime =
+    period === "previous"
+      ? leaderboardSeasonStartTime - leaderboardSeasonDurationMs
+      : leaderboardSeasonStartTime;
+
   return {
-    from: leaderboardSeasonStartTime,
-    to: leaderboardSeasonStartTime + leaderboardSeasonDurationMs,
+    from: startTime,
+    to: startTime + leaderboardSeasonDurationMs,
   };
 }
 
-function currentSeasonIsoRange() {
-  const { from, to } = currentSeasonRange();
+function seasonIsoRange(period: LeaderboardPeriod = "current") {
+  const { from, to } = seasonRange(period);
 
   return {
     from: new Date(from).toISOString(),
@@ -466,9 +473,8 @@ function setLimitParam(url: string) {
   return requestUrl.toString();
 }
 
-function setSeasonIsoLimitParams(url: string) {
+function setSeasonIsoLimitParams(url: string, from: string, to: string) {
   const requestUrl = new URL(url);
-  const { from, to } = currentSeasonIsoRange();
 
   requestUrl.searchParams.set("from", from);
   requestUrl.searchParams.set("to", to);
@@ -492,7 +498,7 @@ function setConfiguredFromToNowLimitParams(url: string) {
   const configuredFrom = requestUrl.searchParams.get("from");
 
   if (!configuredFrom) {
-    return setCurrentIsoLimitParams(url, currentSeasonIsoRange().from);
+    return setCurrentIsoLimitParams(url, seasonIsoRange().from);
   }
 
   requestUrl.searchParams.set("to", new Date().toISOString());
@@ -501,11 +507,14 @@ function setConfiguredFromToNowLimitParams(url: string) {
   return requestUrl.toString();
 }
 
-function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
+function leaderboardRequestUrls(url: string, period: LeaderboardPeriod = "current"): LeaderboardRequestUrl[] {
   const normalizedUrl = normalizeConfiguredUrl(url);
+  const { from, to } = seasonIsoRange(period);
   const requests: LeaderboardRequestUrl[] = [
-    { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(normalizedUrl, currentSeasonIsoRange().from) },
-    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(normalizedUrl) },
+    period === "current"
+      ? { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(normalizedUrl, from) }
+      : { label: "previous-season-iso-limit-only", url: setSeasonIsoLimitParams(normalizedUrl, from, to) },
+    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(normalizedUrl, from, to) },
   ];
   const seen = new Set<string>();
 
@@ -634,12 +643,12 @@ function normalizePlayers(payloads: unknown[]) {
     });
 }
 
-async function fetchBestLeaderboard(url: string) {
+async function fetchBestLeaderboard(url: string, period: LeaderboardPeriod = "current") {
   let bestPlayers: LeaderboardPlayer[] = [];
   let selectedLabel = "none";
   const attempts: FetchAttemptDiagnostic[] = [];
 
-  for (const request of leaderboardRequestUrls(url)) {
+  for (const request of leaderboardRequestUrls(url, period)) {
     try {
       const result = await fetchLeaderboardPayloads(request.url);
       const players = normalizePlayers(result.payloads);
@@ -728,15 +737,18 @@ export async function GET(request: Request) {
   }
 
   try {
-    const debug = new URL(request.url).searchParams.get("debug") === "1";
+    const searchParams = new URL(request.url).searchParams;
+    const debug = searchParams.get("debug") === "1";
+    const period: LeaderboardPeriod = searchParams.get("period") === "previous" ? "previous" : "current";
     const fetchedAt = new Date().toISOString();
-    const result = await fetchBestLeaderboard(CASEBATTLE_LEADERBOARD_URL);
+    const result = await fetchBestLeaderboard(CASEBATTLE_LEADERBOARD_URL, period);
     const successfulAttempts = result.attempts.filter((attempt) => !attempt.error).length;
     const responseBody = {
       players: result.players,
-      season: currentSeasonRange(),
+      season: seasonRange(period),
       source: {
         type: "live-api",
+        period,
         fetchedAt,
         selectedVariant: result.selectedLabel,
         playerCount: result.players.length,
