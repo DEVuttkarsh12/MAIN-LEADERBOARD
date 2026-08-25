@@ -88,7 +88,7 @@ const offsetKeys = ["offset", "skip"];
 const totalPagesKeys = ["totalPages", "total_pages", "lastPage", "last_page", "pageCount", "page_count", "pages"];
 const totalCountKeys = ["total", "totalCount", "total_count", "totalItems", "total_items", "count"];
 const upstreamUpdatedAtKeys = ["updatedAt", "updated_at", "sourceUpdatedAt", "source_updated_at", "lastUpdated", "last_updated", "timestamp", "generatedAt", "generated_at"];
-const leaderboardSeasonStartTime = new Date("2026-08-11T00:00:00.000Z").getTime();
+const leaderboardSeasonStartTime = new Date("2026-08-25T00:00:00.000Z").getTime();
 const leaderboardSeasonDurationMs = 14 * 24 * 60 * 60 * 1000;
 const maxLeaderboardPages = 20;
 const leaderboardPageSize = 50;
@@ -113,12 +113,11 @@ const nestedRecordKeys = [
   "leaderboard_entry",
 ];
 const prizesByRank: Record<number, number> = {
-  1: 500,
-  2: 250,
-  3: 100,
+  1: 275,
+  2: 200,
+  3: 150,
   4: 75,
   5: 50,
-  6: 25,
 };
 
 export const dynamic = "force-dynamic";
