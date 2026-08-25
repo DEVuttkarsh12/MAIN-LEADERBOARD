@@ -304,8 +304,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ranking-filters button:hover, .ranking-filters button.active { color: var(--white); }
 .ranking-filters button.active::after { right: 0; }
 .ranking-filters button span { margin-left: 7px; color: var(--yellow); }
-.ranking-filters .previous-leaderboard-trigger { margin-left: auto; border-right: 1px solid var(--line); color: #070707; background: var(--yellow); }
-.ranking-filters .previous-leaderboard-trigger:hover { color: #070707; background: var(--yellow-hot); }
+.ranking-filters .previous-leaderboard-trigger { min-width: 178px; margin-left: auto; border: 1px solid rgba(255,217,0,.85); border-bottom: 0; color: #070707; background: var(--yellow); box-shadow: 6px 6px 0 rgba(255,255,255,.16), 0 0 22px rgba(255,217,0,.18); transform: translateY(-6px) rotate(-1deg); transition: transform 170ms ease, box-shadow 170ms ease, background 170ms ease; }
+.ranking-filters .previous-leaderboard-trigger:hover { color: #070707; background: var(--yellow-hot); box-shadow: 8px 8px 0 rgba(255,255,255,.2), 0 0 30px rgba(255,217,0,.28); transform: translateY(-9px) rotate(-1deg); }
 .ranking-filters .previous-leaderboard-trigger::after { background: #070707; }
 .ranking-filters .previous-leaderboard-trigger span { color: #070707; }
 .rank-list-header { display: grid; grid-template-columns: 1.45fr .55fr .55fr; gap: 20px; padding: 0 24px 13px; color: #babac0; font-family: var(--label); font-size: 13px; font-weight: 700; letter-spacing: .08em; }
