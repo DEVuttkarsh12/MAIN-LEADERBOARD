@@ -504,11 +504,8 @@ function setConfiguredFromToNowLimitParams(url: string) {
 function leaderboardRequestUrls(url: string): LeaderboardRequestUrl[] {
   const normalizedUrl = normalizeConfiguredUrl(url);
   const requests: LeaderboardRequestUrl[] = [
-    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(normalizedUrl) },
-    { label: "configured", url: normalizedUrl },
-    { label: "configured-from-to-now-limit-only", url: setConfiguredFromToNowLimitParams(normalizedUrl) },
     { label: "season-iso-to-now-limit-only", url: setCurrentIsoLimitParams(normalizedUrl, currentSeasonIsoRange().from) },
-    { label: "limit-only", url: setLimitParam(normalizedUrl) },
+    { label: "season-iso-limit-only", url: setSeasonIsoLimitParams(normalizedUrl) },
   ];
   const seen = new Set<string>();
 
