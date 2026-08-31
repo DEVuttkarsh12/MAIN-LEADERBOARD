@@ -339,7 +339,7 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
 .leaderboard-hero-copy { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
 .packdraw-logo-hero { justify-content: center; font-size: 24px; margin-bottom: 18px; }
 .packdraw-logo-hero img { width: 1.8em; height: 1.8em; }
-.leaderboard-hero h1 { margin: 0; color: var(--white); font-family: var(--display); font-size: 58px; font-weight: 700; line-height: 1.15; }
+.leaderboard-title { margin: 0; color: var(--white); font-family: var(--display); font-size: 58px; font-weight: 700; line-height: 1.15; }
 .leaderboard-period { margin: 12px 0 0; color: #a8a9af; font-family: var(--label); font-size: 12px; line-height: 1.6; }
 .leaderboard-summary { display: grid; grid-template-columns: 1fr 1fr; width: min(540px, 100%); margin-top: 28px; }
 .leaderboard-summary > div { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 6px 24px; }
@@ -349,6 +349,24 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
 .leaderboard-prize strong { color: var(--yellow); font-size: 56px; }
 .leaderboard-countdown strong { color: var(--silver); font-size: 34px; }
 .leaderboard-updated { margin: 22px 0 0; color: var(--grey); font-family: var(--label); font-size: 11px; }
+.leaderboard-content { scroll-margin-top: 82px; }
+.leaderboard-embedded { border-top: 1px solid var(--line); }
+.leaderboard-embedded .leaderboard-hero { padding-top: 48px; }
+.leaderboard-embedded .leaderboard-floaters { display: none; }
+.leaderboard-full-link { display: inline-flex; align-items: center; gap: 12px; margin-top: 20px; padding: 8px 0; color: var(--yellow); font-size: 13px; border-bottom: 1px solid #55575e; }
+.leaderboard-full-link:hover { border-color: var(--yellow); }
+.leaderboard-history { padding: 56px 0 64px; border-top: 1px solid var(--line); background: #0c0c0e; }
+.history-inner { width: min(1060px, calc(100% - 64px)); margin: 0 auto; }
+.history-heading { text-align: center; }
+.history-heading h2 { margin: 14px 0 28px; font-family: var(--display); font-size: 34px; font-weight: 700; line-height: 1.2; }
+.history-heading em { color: var(--yellow); font-style: normal; }
+.history-picker { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 0 auto 28px; color: var(--grey); font-size: 12px; }
+.history-picker select { width: min(380px, 100%); min-height: 48px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 4px; background: #141416; color: var(--white); font: inherit; font-size: 14px; }
+.history-picker select:focus-visible { outline: 2px solid var(--yellow); outline-offset: 4px; }
+.history-period { margin: 0 0 24px; color: var(--silver); font-family: var(--label); font-size: 12px; text-align: center; line-height: 1.6; }
+.history-empty { min-height: 124px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px 12px; border-block: 1px solid var(--line); }
+.history-empty strong { font-size: 17px; font-weight: 500; line-height: 1.5; }
+.history-empty p { margin: 0; color: var(--grey); font-size: 14px; line-height: 1.6; }
 .season-ticket { position: relative; z-index: 2; min-height: 330px; display: flex; flex-direction: column; padding: 26px 31px 30px; color: #080808; background: var(--silver); clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 30px, 100% 100%, 30px 100%, 0 calc(100% - 30px)); transform: rotate(3deg); box-shadow: 16px 16px 0 var(--yellow); }
 .season-ticket::after { content: ""; position: absolute; inset: 55px 0 auto; border-top: 2px dashed rgba(0,0,0,.32); }
 .season-ticket > div { display: flex; justify-content: space-between; gap: 18px; margin-bottom: auto; font-family: var(--label); font-size: 13px; font-weight: 700; letter-spacing: 0; }
@@ -581,7 +599,7 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
   .home-page .social-ticket-action { font-size: 10px; }
   .leaderboard-hero { width: calc(100% - 32px); min-height: 0; padding: 104px 0 24px; }
   .packdraw-logo-hero { font-size: 20px; margin-bottom: 14px; }
-  .leaderboard-hero h1 { font-size: 32px; }
+  .leaderboard-title { font-size: 32px; }
   .leaderboard-period { font-size: 10px; margin-top: 10px; }
   .leaderboard-summary { margin-top: 24px; }
   .leaderboard-summary > div { gap: 12px; padding: 4px 12px; }
@@ -589,6 +607,13 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
   .leaderboard-prize strong { font-size: 40px; }
   .leaderboard-countdown strong { font-size: 23px; }
   .leaderboard-updated { font-size: 10px; margin-top: 18px; }
+  .leaderboard-content { scroll-margin-top: 70px; }
+  .leaderboard-embedded .leaderboard-hero { padding-top: 32px; }
+  .leaderboard-history { padding: 40px 0 48px; }
+  .history-inner { width: calc(100% - 32px); }
+  .history-heading h2 { font-size: 28px; }
+  .history-empty strong { font-size: 15px; }
+  .history-empty p { font-size: 13px; }
   .season-ticket { width: calc(100% - 12px); justify-self: start; transform: rotate(1.5deg); }
   .packdraw-logo-ticket { font-size: clamp(24px, 8vw, 32px); }
   .season-ticket > div { flex-direction: column; gap: 7px; }

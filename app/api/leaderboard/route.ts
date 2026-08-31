@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { monthlyPeriods } from "../../../lib/leaderboard-periods";
 
 type RawRecord = Record<string, unknown>;
 
@@ -24,7 +25,6 @@ const PACKDRAW_LEADERBOARD_URL = process.env.PACKDRAW_LEADERBOARD_URL;
 const PACKDRAW_API_KEY = process.env.PACKDRAW_API_KEY?.trim();
 const PACKDRAW_PERIOD_START = process.env.PACKDRAW_PERIOD_START?.trim();
 const DEFAULT_LEADERBOARD_URL = "https://packdraw.com/api/v1/affiliates/leaderboard?apiKey=API_KEY";
-const DEFAULT_PERIOD_START = "2026-08-31";
 const FALLBACK_PRIZES = [500, 250, 150, 50, 25, 25];
 const PACKDRAW_PRIZES = parsePrizeList(process.env.PACKDRAW_PRIZES);
 const UPSTREAM_TIMEOUT_MS = 10_000;
@@ -100,83 +100,13 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function parseDateOnly(value: string | undefined): number | undefined {
-  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) {
-    return undefined;
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const timestamp = Date.UTC(year, month - 1, day);
-  const parsed = new Date(timestamp);
-
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return undefined;
-  }
-
-  return timestamp;
-}
-
-function daysInUtcMonth(year: number, monthIndex: number): number {
-  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-}
-
-function firstDayOfUtcMonthAfter(start: number, monthsToAdd: number): number {
-  const date = new Date(start);
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + monthsToAdd, 1);
-}
-
-function firstDayOfNextUtcMonth(start: number): number {
-  return firstDayOfUtcMonthAfter(start, 1);
-}
-
-function addUtcMonthsClamped(start: number, monthsToAdd: number): number {
-  const date = new Date(start);
-  const targetMonth = date.getUTCMonth() + monthsToAdd;
-  const targetYear = date.getUTCFullYear() + Math.floor(targetMonth / 12);
-  const normalizedMonth = ((targetMonth % 12) + 12) % 12;
-  const targetDay = Math.min(date.getUTCDate(), daysInUtcMonth(targetYear, normalizedMonth));
-
-  return Date.UTC(targetYear, normalizedMonth, targetDay);
-}
-
-function isLastDayOfUtcMonth(timestamp: number): boolean {
-  const date = new Date(timestamp);
-  return date.getUTCDate() === daysInUtcMonth(date.getUTCFullYear(), date.getUTCMonth());
-}
-
-function configuredPeriodStart(): number {
-  return parseDateOnly(PACKDRAW_PERIOD_START) ?? parseDateOnly(DEFAULT_PERIOD_START) ?? Date.UTC(2026, 7, 31);
-}
-
-function currentMonthlyPeriod(now = Date.now()) {
-  const configuredStart = configuredPeriodStart();
-  const usesMonthEndStart = isLastDayOfUtcMonth(configuredStart);
-  let from = configuredStart;
-  let to = usesMonthEndStart
-    ? firstDayOfUtcMonthAfter(configuredStart, 2)
-    : addUtcMonthsClamped(configuredStart, 1);
-
-  while (now >= to) {
-    from = to;
-    to = usesMonthEndStart ? firstDayOfNextUtcMonth(from) : addUtcMonthsClamped(from, 1);
-  }
-
-  return { from, to };
-}
 
 function formatPackDrawDate(timestamp: number): string {
   const date = new Date(timestamp);
   return `${date.getUTCMonth() + 1}-${date.getUTCDate()}-${date.getUTCFullYear()}`;
 }
 
-function leaderboardUrl(periodStart: number): string | undefined {
+function leaderboardUrl(periodStart: number, periodEnd?: number): string | undefined {
   const template = PACKDRAW_LEADERBOARD_URL || DEFAULT_LEADERBOARD_URL;
 
   if (!PACKDRAW_API_KEY) {
@@ -184,13 +114,13 @@ function leaderboardUrl(periodStart: number): string | undefined {
   }
 
   const url = new URL(template.replace("API_KEY", encodeURIComponent(PACKDRAW_API_KEY)));
-  if (template.includes("API_KEY")) {
-    url.searchParams.set("after", formatPackDrawDate(periodStart));
-    return url.toString();
-  }
-
   url.searchParams.set("apiKey", PACKDRAW_API_KEY);
   url.searchParams.set("after", formatPackDrawDate(periodStart));
+  if (periodEnd !== undefined) {
+    url.searchParams.set("before", formatPackDrawDate(periodEnd));
+  } else {
+    url.searchParams.delete("before");
+  }
   return url.toString();
 }
 
@@ -249,9 +179,19 @@ function leaderboardResponse(payload: unknown, status = 200) {
   });
 }
 
-export async function GET() {
-  const period = currentMonthlyPeriod();
-  const url = leaderboardUrl(period.from);
+export async function GET(request: Request) {
+  const periods = monthlyPeriods(PACKDRAW_PERIOD_START);
+  const requestedPeriod = new URL(request.url).searchParams.get("period");
+  const isHistorical = requestedPeriod !== null;
+  const period = isHistorical
+    ? periods.completed.find((entry) => entry.id === requestedPeriod)
+    : periods.current;
+
+  if (!period) {
+    return leaderboardResponse({ players: [], error: "That completed leaderboard is not available." }, 404);
+  }
+
+  const url = leaderboardUrl(period.from, isHistorical ? period.to : undefined);
 
   if (!url) {
     return leaderboardResponse({ players: [], error: "Pack Draw API key is not configured." }, 500);
@@ -272,6 +212,13 @@ export async function GET() {
 
     if (!response.ok) {
       return leaderboardResponse({ players: [], error: `Pack Draw API returned ${response.status}.` }, response.status);
+    }
+
+    // Do not show an unbounded response as a completed monthly leaderboard.
+    if (isHistorical && (!isRecord(payload)
+      || readTimestamp(payload, "after") !== period.from
+      || readTimestamp(payload, "before") !== period.to)) {
+      return leaderboardResponse({ players: [], error: "Pack Draw could not verify this leaderboard period." }, 502);
     }
 
     const players = readEntries(payload)
@@ -297,6 +244,7 @@ export async function GET() {
       sourceWindow,
       prizePool: PACKDRAW_PRIZES.reduce((total, prize) => total + prize, 0),
       prizes: PACKDRAW_PRIZES,
+      completedPeriods: periods.completed,
     });
   } catch {
     return leaderboardResponse({ players: [], error: "Pack Draw leaderboard data is unavailable." }, 502);

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { PackDrawLogo, ShuffleLogo, SiteFooter, SiteHeader } from "./site-shell";
+import { SiteFooter, SiteHeader } from "./site-shell";
+import LeaderboardBoard from "./leaderboard-board";
 
 export default function Home() {
   return (
@@ -22,38 +23,16 @@ export default function Home() {
             <span>DIRTY</span>
             <span className="word-yellow">GAMBLERS</span>
           </h1>
-          <p>Your community. Your place on the board.<br />Monthly rewards with DirtyGamblers.</p>
+          <p>Your community. Your place on the board.</p>
           <div className="hero-cta-row">
-            <Link className="slash-button slash-button-yellow" href="/leaderboard">
+            <Link className="slash-button slash-button-yellow" href="#live-leaderboard">
               View rankings <b aria-hidden="true">-&gt;</b>
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="home-reward-stage" aria-label="Current leaderboard reward">
-        <div className="home-reward-inner">
-          <div className="home-reward-platform">
-            <span className="section-code">THIS MONTH</span>
-            <PackDrawLogo className="home-reward-logo" />
-          </div>
-          <div className="home-reward-amount"><strong>$1,000</strong><h2>MONTHLY PRIZE POOL</h2></div>
-          <Link className="reward-link" href="/leaderboard">Explore the leaderboard <b aria-hidden="true">-&gt;</b></Link>
-        </div>
-      </section>
-
-      <section className="home-platforms" aria-label="Leaderboard platforms">
-        <Link className="home-platform-card active" href="/leaderboard">
-          <span>01</span>
-          <PackDrawLogo className="home-platform-logo" />
-          <b>LIVE</b>
-        </Link>
-        <a className="home-platform-card locked" href="https://shuffle.com/" target="_blank" rel="noreferrer">
-          <span>02</span>
-          <ShuffleLogo className="home-platform-shuffle" />
-          <b>SOON</b>
-        </a>
-      </section>
+      <LeaderboardBoard embedded />
 
       <section className="home-socials" aria-labelledby="social-title">
         <div className="social-heading">
