@@ -27,6 +27,12 @@ const DEFAULT_LEADERBOARD_URL = "https://packdraw.com/api/v1/affiliates/leaderbo
 const DEFAULT_PERIOD_START = "2026-08-31";
 const FALLBACK_PRIZES = [500, 250, 150, 50, 25, 25];
 const PACKDRAW_PRIZES = parsePrizeList(process.env.PACKDRAW_PRIZES);
+const UPSTREAM_TIMEOUT_MS = 10_000;
+const CLIENT_REFRESH_SECONDS = 5 * 60;
+const RESPONSE_HEADERS = {
+  "Cache-Control": "no-store, max-age=0",
+  "X-Leaderboard-Refresh-Seconds": String(CLIENT_REFRESH_SECONDS),
+};
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -236,31 +242,36 @@ function readTimestamp(payload: RawRecord, key: "after" | "before" | "asOf"): nu
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
+function leaderboardResponse(payload: unknown, status = 200) {
+  return NextResponse.json(payload, {
+    status,
+    headers: RESPONSE_HEADERS,
+  });
+}
+
 export async function GET() {
   const period = currentMonthlyPeriod();
   const url = leaderboardUrl(period.from);
 
   if (!url) {
-    return NextResponse.json(
-      { players: [], error: "Pack Draw API key is not configured." },
-      { status: 500 },
-    );
+    return leaderboardResponse({ players: [], error: "Pack Draw API key is not configured." }, 500);
   }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
   try {
     const response = await fetch(url, {
       method: "GET",
       cache: "no-store",
       headers: { accept: "application/json" },
+      signal: controller.signal,
     });
 
     const payload = await response.json() as unknown;
 
     if (!response.ok) {
-      return NextResponse.json(
-        { players: [], error: `Pack Draw API returned ${response.status}.` },
-        { status: response.status },
-      );
+      return leaderboardResponse({ players: [], error: `Pack Draw API returned ${response.status}.` }, response.status);
     }
 
     const players = readEntries(payload)
@@ -277,20 +288,19 @@ export async function GET() {
       ? {
           from: period.from,
           to: period.to,
-          updatedAt: readTimestamp(payload, "asOf"),
+          updatedAt: readTimestamp(payload, "asOf") ?? Date.now(),
         }
-      : { from: period.from, to: period.to };
+      : { from: period.from, to: period.to, updatedAt: Date.now() };
 
-    return NextResponse.json({
+    return leaderboardResponse({
       players,
       sourceWindow,
       prizePool: PACKDRAW_PRIZES.reduce((total, prize) => total + prize, 0),
       prizes: PACKDRAW_PRIZES,
     });
   } catch {
-    return NextResponse.json(
-      { players: [], error: "Pack Draw leaderboard data is unavailable." },
-      { status: 502 },
-    );
+    return leaderboardResponse({ players: [], error: "Pack Draw leaderboard data is unavailable." }, 502);
+  } finally {
+    clearTimeout(timeout);
   }
 }

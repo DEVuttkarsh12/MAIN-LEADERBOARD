@@ -197,12 +197,23 @@ export default function LeaderboardPage() {
 
     void loadLeaderboard();
     const timer = window.setInterval(() => {
-      void loadLeaderboard(false);
+      if (document.visibilityState === "visible") {
+        void loadLeaderboard(false);
+      }
     }, leaderboardRefreshMs);
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") {
+        void loadLeaderboard(false);
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       isActive = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       activeController?.abort();
     };
   }, []);
