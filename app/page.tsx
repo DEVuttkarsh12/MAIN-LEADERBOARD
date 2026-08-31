@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { PackDrawLogo, SiteFooter, SiteHeader } from "./site-shell";
+import { PackDrawLogo, ShuffleLogo, SiteFooter, SiteHeader } from "./site-shell";
 
 export default function Home() {
   return (
@@ -19,52 +19,47 @@ export default function Home() {
         </div>
 
         <div className="home-hero-copy">
+          <div className="home-logo-medallion">
+            <Image className="home-brand-mark-large" src="/dirtygamblers-logo.jpeg" alt="" width={400} height={400} priority unoptimized />
+            <PackDrawLogo className="home-medallion-platform" />
+          </div>
           <h1 id="home-title">
-            <span className="word-outline">Play</span>
-            <span>dirty.</span>
-            <span className="word-yellow">Rank</span>
-            <span className="word-tilt">clean.</span>
+            <span>DIRTY</span>
+            <span className="word-yellow">GAMBLERS</span>
           </h1>
-          <p>Pack Draw is live. Score. Climb. Stay ready.</p>
+          <p>Monthly leaderboard rewards up for grabs. Pack Draw is live now, Shuffle stays ready for what comes next.</p>
           <div className="hero-cta-row">
             <Link className="slash-button slash-button-yellow" href="/leaderboard">
               View rankings <b aria-hidden="true">-&gt;</b>
             </Link>
           </div>
         </div>
-
-        <div className="leaderboard-poster-wrap" aria-hidden="true">
-          <div className="poster-shadow" />
-          <div className="leaderboard-poster">
-            <div className="poster-top"><span className="live-sticker">Live!</span></div>
-            <div className="poster-copy">
-              <PackDrawLogo className="packdraw-logo-poster" />
-              <strong className="poster-outline">LEADERBOARD</strong>
-            </div>
-            <div className="poster-bottom"><span>PACK DRAW</span><span className="poster-arrow">-&gt;</span></div>
-            <span className="poster-star poster-star-one">+</span>
-            <span className="poster-star poster-star-two">+</span>
-          </div>
-          <div className="side-sticker">NO BORING PLAYS</div>
-        </div>
       </section>
 
-      <div className="chaos-tape" aria-hidden="true">
-        <div className="chaos-tape-track">
-          <span>PACK DRAW</span><i>+</i><span>TAKE THE TABLE</span><i>+</i><span>DIRTYGAMBLERS</span><i>+</i>
-          <span>PACK DRAW</span><i>+</i><span>TAKE THE TABLE</span><i>+</i><span>DIRTYGAMBLERS</span><i>+</i>
-        </div>
-      </div>
+      <section className="home-reward-stage" aria-label="Current leaderboard reward">
+        <PackDrawLogo className="home-reward-logo" />
+        <h2>LEADERBOARD</h2>
+        <strong>$1,000</strong>
+        <span>REWARD</span>
+        <Link className="slash-button slash-button-yellow" href="/leaderboard">Open leaderboard <b>-&gt;</b></Link>
+      </section>
 
-      <section className="leaderboard-callout" aria-labelledby="callout-title">
-        <div className="callout-noise" aria-hidden="true" />
-        <h2 id="callout-title">PACK DRAW<br /><em>TABLE.</em></h2>
-        <Link className="slash-button slash-button-black" href="/leaderboard">View rankings <b>-&gt;</b></Link>
+      <section className="home-platforms" aria-label="Leaderboard platforms">
+        <Link className="home-platform-card active" href="/leaderboard">
+          <span>01</span>
+          <PackDrawLogo className="home-platform-logo" />
+          <b>LIVE</b>
+        </Link>
+        <a className="home-platform-card locked" href="https://shuffle.com/" target="_blank" rel="noreferrer">
+          <span>02</span>
+          <ShuffleLogo className="home-platform-shuffle" />
+          <b>SOON</b>
+        </a>
       </section>
 
       <section className="home-socials" aria-labelledby="social-title">
         <div className="social-heading">
-          <div><h2 id="social-title">JOIN THE<br /><em>NOISE.</em></h2></div>
+          <div><h2 id="social-title">JOIN THE<br /><em>TABLE.</em></h2></div>
         </div>
         <div className="social-tickets">
           <a className="social-ticket ticket-discord" href="https://discord.gg/2cZ4HqfZdH" target="_blank" rel="noreferrer" aria-label="Join DirtyGamblers on Discord">

@@ -220,6 +220,131 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ticket-x:hover { transform: translateY(11px) rotate(-1deg); }
 .ticket-kick:hover { transform: translateY(3px) rotate(.5deg); }
 
+.home-page {
+  overflow-x: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,217,0,.08), transparent 520px),
+    radial-gradient(circle at 50% 280px, rgba(255,217,0,.14), transparent 390px),
+    var(--black);
+}
+.home-page .home-hero {
+  width: min(1180px, calc(100% - 64px));
+  min-height: 820px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 132px 0 118px;
+  text-align: center;
+}
+.home-page .home-hero::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 82px;
+  width: min(960px, 84vw);
+  height: 150px;
+  border: 1px solid rgba(255,217,0,.18);
+  background: linear-gradient(90deg, transparent, rgba(255,217,0,.08), transparent);
+  transform: translateX(-50%) skewY(-4deg);
+}
+.home-page .hero-grid-lines { inset: 82px -24vw 0; opacity: .09; mask-image: linear-gradient(to bottom, transparent, #000 18%, transparent); }
+.home-page .home-hero-copy { position: relative; z-index: 3; width: 100%; display: flex; flex-direction: column; align-items: center; }
+.home-logo-medallion {
+  position: relative;
+  width: min(390px, 58vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 46px;
+  border: 1px solid rgba(255,217,0,.5);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #2b2b2f, #101012 58%, #050505 100%);
+  box-shadow: 0 0 0 12px rgba(255,217,0,.06), 0 35px 80px rgba(0,0,0,.75), 0 0 45px rgba(255,217,0,.15);
+}
+.home-brand-mark-large { width: 142px; height: 142px; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; object-fit: cover; box-shadow: 9px 10px 0 rgba(0,0,0,.48); }
+.home-medallion-platform { position: absolute; left: 50%; bottom: 57px; justify-content: center; color: var(--white); font-size: clamp(22px, 2.4vw, 34px); transform: translateX(-50%); filter: drop-shadow(6px 7px 0 rgba(0,0,0,.55)); }
+.home-medallion-platform img { width: 1.35em; height: 1.35em; border-radius: 8px; }
+.home-page .home-hero h1 {
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  font-size: clamp(76px, 8vw, 130px);
+  line-height: .78;
+  text-shadow: 8px 8px 0 rgba(0,0,0,.52);
+}
+.home-page .home-hero h1 span { display: block; }
+.home-page .word-yellow { color: var(--yellow); text-shadow: 0 0 20px rgba(255,217,0,.28), 8px 8px 0 rgba(0,0,0,.52); }
+.home-page .home-hero-copy > p {
+  max-width: 790px;
+  margin: 31px auto 0;
+  color: #f3f3f5;
+  font-family: var(--label);
+  font-size: clamp(18px, 1.9vw, 25px);
+  font-weight: 800;
+  line-height: 1.46;
+  text-transform: uppercase;
+  text-shadow: 0 6px 20px #000;
+}
+.home-page .hero-cta-row { justify-content: center; margin-top: 38px; }
+.home-page .floating-game-elements { z-index: 2; inset: 82px -90px 38px; }
+.home-page .floating-vs { width: 142px; left: 4vw; top: 70px; }
+.home-page .floating-x10 { width: 136px; left: 9vw; bottom: 95px; }
+.home-page .floating-cat { width: 144px; right: 5vw; top: 108px; }
+.home-page .floating-scatter { width: 152px; right: 12vw; bottom: 112px; }
+.home-page .scribble-one { left: calc(50% + 250px); top: 150px; }
+.home-page .scribble-two { left: calc(50% - 330px); bottom: 155px; }
+
+.home-reward-stage {
+  position: relative;
+  z-index: 3;
+  width: min(820px, calc(100% - 64px));
+  margin: -58px auto 0;
+  padding: 54px 24px 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(18,18,20,.95), rgba(8,8,9,.98));
+}
+.home-reward-stage::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,217,0,.55), transparent); }
+.home-reward-logo { justify-content: center; margin-bottom: 10px; color: var(--silver); font-size: clamp(29px, 3.6vw, 44px); }
+.home-reward-logo img { width: 1.55em; height: 1.55em; border-radius: 9px; }
+.home-reward-stage h2 { margin: 0 0 18px; color: var(--yellow); font-family: var(--display); font-size: clamp(31px, 4.5vw, 58px); font-weight: 700; line-height: .9; letter-spacing: 0; text-transform: uppercase; }
+.home-reward-stage > strong { color: var(--yellow); font-family: var(--display); font-size: clamp(70px, 10vw, 130px); font-weight: 700; line-height: .82; letter-spacing: 0; text-shadow: 0 0 25px rgba(255,217,0,.48), 8px 8px 0 #101014; }
+.home-reward-stage > span { margin-top: 11px; color: var(--silver); font-family: var(--display); font-size: clamp(29px, 4vw, 54px); line-height: .9; letter-spacing: 0; text-transform: uppercase; }
+.home-reward-stage .slash-button { margin-top: 32px; }
+
+.home-platforms {
+  width: min(760px, calc(100% - 64px));
+  margin: 44px auto 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #0b0b0c;
+  box-shadow: 0 22px 60px rgba(0,0,0,.38);
+}
+.home-platform-card { min-height: 74px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 13px; padding: 15px 21px; border-right: 1px solid var(--line); }
+.home-platform-card:last-child { border-right: 0; }
+.home-platform-card > span { color: var(--yellow); font-family: var(--display); font-size: 24px; }
+.home-platform-logo { margin-top: 0; font-size: 18px; }
+.home-platform-logo img { width: 1.65em; height: 1.65em; }
+.home-platform-shuffle { width: 106px; margin-top: 3px; }
+.home-platform-card > b { padding: 8px 10px; color: #080808; background: var(--yellow); border-radius: 3px; font-family: var(--label); font-size: 12px; letter-spacing: 0; transform: rotate(-2deg); }
+.home-platform-card.active { background: linear-gradient(90deg, rgba(255,217,0,.08), transparent); }
+.home-platform-card.locked { opacity: .45; background: repeating-linear-gradient(135deg, transparent 0 13px, rgba(255,255,255,.025) 13px 14px); }
+.home-platform-card.locked > span { color: var(--silver); }
+.home-platform-card.locked > b { color: var(--silver); background: #2e2f34; }
+
+.home-page .home-socials { width: min(1060px, calc(100% - 64px)); padding: 112px 0 125px; text-align: center; }
+.home-page .social-heading { justify-items: center; gap: 0; margin-bottom: 38px; }
+.home-page .social-heading h2 { margin: 0; font-size: clamp(46px, 5vw, 72px); line-height: .9; }
+.home-page .social-tickets { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.home-page .social-ticket { min-height: 178px; text-align: left; }
+
 .leaderboard-page {
   overflow-x: hidden;
   background:
@@ -440,6 +565,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .social-tickets { grid-template-columns: repeat(2, 1fr); }
   .social-ticket { min-height: 300px; }
   .ticket-x, .ticket-kick, .ticket-instagram { transform: none; }
+  .home-page .home-hero { min-height: 760px; padding: 128px 0 100px; }
+  .home-page .home-logo-medallion { width: min(340px, 62vw); }
+  .home-page .home-hero h1 { font-size: clamp(68px, 10vw, 102px); }
+  .home-page .floating-vs { width: 118px; left: -8px; top: 108px; }
+  .home-page .floating-x10 { width: 108px; left: 5vw; bottom: 110px; }
+  .home-page .floating-cat { width: 118px; right: -10px; top: 150px; }
+  .home-page .floating-scatter { width: 118px; right: 7vw; bottom: 120px; }
+  .home-page .home-socials { width: min(100% - 40px, 920px); }
+  .home-page .social-tickets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .podium-grid { gap: 12px; }
   .rank-list-header, .rank-row { grid-template-columns: 88px minmax(0, 1fr) .8fr .58fr; }
   .rank-list-header { font-size: 18px; }
@@ -487,6 +621,34 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .social-heading h2 { font-size: clamp(50px, 16vw, 72px); }
   .social-tickets { grid-template-columns: 1fr; }
   .social-ticket { min-height: 285px; }
+  .home-page .home-hero { width: 100%; min-height: 650px; padding: 104px 15px 78px; overflow: hidden; }
+  .home-page .home-hero::after { width: calc(100% - 30px); bottom: 72px; }
+  .home-page .hero-grid-lines { inset-inline: -120px; }
+  .home-page .home-logo-medallion { width: min(270px, 72vw); margin-bottom: 32px; }
+  .home-page .home-brand-mark-large { width: 96px; height: 96px; border-radius: 12px; }
+  .home-page .home-medallion-platform { bottom: 40px; flex-direction: column; gap: .22em; font-size: clamp(19px, 5.7vw, 25px); }
+  .home-page .home-medallion-platform img { width: 1.7em; height: 1.7em; }
+  .home-page .home-hero h1 { width: 100%; max-width: 340px; font-size: clamp(34px, 9vw, 40px); line-height: .84; }
+  .home-page .home-hero-copy > p { max-width: 300px; margin-top: 24px; font-size: 12px; }
+  .home-page .hero-cta-row { align-items: center; margin-top: 30px; }
+  .home-page .slash-button { min-width: min(245px, 100%); }
+  .home-page .floating-game-elements { display: none; }
+  .home-reward-stage { width: calc(100% - 30px); margin-top: -34px; padding: 42px 12px 36px; }
+  .home-reward-logo { max-width: 100%; flex-direction: column; justify-content: center; gap: .3em; font-size: clamp(22px, 6vw, 27px); }
+  .home-reward-logo img { width: 1.85em; height: 1.85em; }
+  .home-reward-stage h2 { font-size: clamp(26px, 7.6vw, 33px); }
+  .home-reward-stage > strong { font-size: clamp(52px, 15vw, 66px); }
+  .home-reward-stage > span { font-size: clamp(25px, 9vw, 42px); }
+  .home-platforms { width: calc(100% - 30px); grid-template-columns: 1fr; border-radius: 24px; }
+  .home-platform-card { min-height: 96px; grid-template-columns: 42px 1fr auto; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); padding: 15px; }
+  .home-platform-card:last-child { border-bottom: 0; }
+  .home-platform-card > span { font-size: 34px; }
+  .home-platform-card > b { padding: 8px 9px; font-size: 11px; }
+  .home-platform-shuffle { width: 102px; }
+  .home-page .home-socials { width: calc(100% - 30px); padding: 94px 0 96px; }
+  .home-page .social-heading h2 { font-size: clamp(31px, 9vw, 39px); text-align: center; }
+  .home-page .social-tickets { grid-template-columns: 1fr; }
+  .home-page .social-ticket { min-height: 188px; }
   .leaderboard-hero { width: 100%; min-height: 610px; padding: 112px 15px 78px; overflow: hidden; }
   .leaderboard-hero::after { width: calc(100% - 30px); }
   .leaderboard-logo-medallion { width: min(260px, 70vw); margin-bottom: 34px; }
