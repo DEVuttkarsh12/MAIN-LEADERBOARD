@@ -33,22 +33,24 @@ export function Brand() {
 
 export function SiteHeader({ active }: HeaderProps) {
   return (
-    <header className="site-header">
-      <div className="header-inner">
-        <Brand />
-        <nav className="primary-nav" aria-label="Primary navigation">
-          <Link className={active === "home" ? "nav-item active" : "nav-item"} href="/">Home</Link>
-          <Link className={active === "leaderboard" ? "nav-item nav-platform active" : "nav-item nav-platform"} href="/leaderboard"><PackDrawLogo className="nav-platform-logo" /></Link>
-          <span className="nav-item nav-platform nav-locked"><ShuffleLogo className="nav-shuffle-logo" /><b>Soon</b></span>
-        </nav>
-        <Link className="header-action" href="/leaderboard"><span>Leaderboard</span><b aria-hidden="true">-&gt;</b></Link>
-      </div>
+    <>
+      <header className="site-header">
+        <div className="header-inner">
+          <Brand />
+          <nav className="primary-nav" aria-label="Primary navigation">
+            <Link className={active === "home" ? "nav-item active" : "nav-item"} href="/">Home</Link>
+            <Link className={active === "leaderboard" ? "nav-item nav-platform active" : "nav-item nav-platform"} href="/leaderboard"><PackDrawLogo className="nav-platform-logo" /></Link>
+            <span className="nav-item nav-platform nav-locked"><ShuffleLogo className="nav-shuffle-logo" /><b>Soon</b></span>
+          </nav>
+          <Link className="header-action" href="/leaderboard" aria-label="Leaderboard"><span>Leaderboard</span><b aria-hidden="true">-&gt;</b></Link>
+        </div>
+      </header>
       <nav className="mobile-nav" aria-label="Mobile navigation">
         <Link className={active === "home" ? "mobile-nav-item active" : "mobile-nav-item"} href="/"><b>H</b><span>Home</span></Link>
         <Link className={active === "leaderboard" ? "mobile-nav-item active" : "mobile-nav-item"} href="/leaderboard"><b className="mobile-platform-icon"><Image src="/brands/packdraw-logo.jpg" alt="" width={400} height={400} unoptimized /></b><span>Pack Draw</span></Link>
         <span className="mobile-nav-item mobile-nav-locked"><b className="mobile-platform-icon shuffle-mobile-icon"><Image src="/brands/shuffle-logo.svg" alt="" width={147} height={24} unoptimized /></b><span>Shuffle - Soon</span></span>
       </nav>
-    </header>
+    </>
   );
 }
 

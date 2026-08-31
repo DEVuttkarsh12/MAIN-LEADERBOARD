@@ -255,25 +255,15 @@ export default function LeaderboardPage() {
           <Image className="leaderboard-floater leaderboard-floater-scatter" src="/floating/ref-scatter-machine.png" alt="" width={1254} height={1254} unoptimized />
         </div>
         <div className="leaderboard-hero-copy">
-          <div className="leaderboard-logo-medallion">
-            <PackDrawLogo className="packdraw-logo-hero" />
+          <PackDrawLogo className="packdraw-logo-hero" />
+          <h1 id="leaderboard-title">LEADERBOARD</h1>
+          <p className="leaderboard-period">{formatDateRange(sourceWindow)}</p>
+          <div className="leaderboard-summary">
+            <div className="leaderboard-prize"><span>MONTHLY PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
+            <div className="leaderboard-countdown"><span>TIME REMAINING</span><strong>{countdown}</strong></div>
           </div>
-          <h1 id="leaderboard-title"><span>PACK DRAW</span><strong>LEADERBOARD</strong></h1>
-          <p>Monthly leaderboard rewards up for grabs. Current run: {formatDateRange(sourceWindow)}.</p>
+          <p className="leaderboard-updated">Updated {formatUpdatedAt(sourceWindow.updatedAt)} UTC</p>
         </div>
-      </section>
-
-      <section className="leaderboard-prize-stage" aria-label="Pack Draw prize pool">
-        <PackDrawLogo className="prize-stage-logo" />
-        <h2>LEADERBOARD</h2>
-        <strong>{formatCurrency(prizePool)}</strong>
-        <span>REWARD</span>
-        <b>{countdown}</b>
-      </section>
-
-      <section className="leaderboard-period-note" aria-label="Current leaderboard information">
-        <strong>MONTHLY RUN</strong>
-        <p>Ends {formatDate(Number(sourceWindow.to) - 1)} | As of {formatUpdatedAt(sourceWindow.updatedAt)} UTC</p>
       </section>
 
       <div className="platform-strip" aria-label="Leaderboard modes">
