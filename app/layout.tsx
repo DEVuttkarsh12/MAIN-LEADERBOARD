@@ -20,8 +20,8 @@ const labelFont = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DirtyGamblers — Case Battles",
-  description: "Case Battles, live rankings, and community action from DirtyGamblers.",
+  title: "DirtyGamblers | Pack Draw",
+  description: "Pack Draw leaderboard rankings, prize pool, and community links from DirtyGamblers.",
   other: {
     "codex-preview": "development",
   },
