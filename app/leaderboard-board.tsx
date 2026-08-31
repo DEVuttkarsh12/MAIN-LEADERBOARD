@@ -213,8 +213,10 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
 
       <section className="leaderboard-hero" aria-labelledby="leaderboard-title">
         {!embedded && <div className="leaderboard-floaters" aria-hidden="true">
-          <Image className="leaderboard-floater leaderboard-floater-legacy" src="/floating/packdraw-legacy.jpeg" alt="" width={640} height={972} unoptimized />
-          <Image className="leaderboard-floater leaderboard-floater-atlantis" src="/floating/packdraw-atlantis.jpeg" alt="" width={640} height={972} unoptimized />
+          <Image className="leaderboard-floater leaderboard-floater-car" src="/floating/leaderboard-sports-car.png" alt="" width={1885} height={628} unoptimized />
+          <Image className="leaderboard-floater leaderboard-floater-watch" src="/floating/leaderboard-watch.png" alt="" width={749} height={1000} unoptimized />
+          <Image className="leaderboard-floater leaderboard-floater-diamond" src="/floating/leaderboard-diamond.png" alt="" width={1233} height={1233} unoptimized />
+          <Image className="leaderboard-floater leaderboard-floater-gold" src="/floating/leaderboard-gold-bars.png" alt="" width={512} height={326} unoptimized />
         </div>}
         <div className="leaderboard-hero-copy">
           <PackDrawLogo className="packdraw-logo-hero" />
