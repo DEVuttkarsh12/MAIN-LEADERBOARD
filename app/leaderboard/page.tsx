@@ -255,24 +255,26 @@ export default function LeaderboardPage() {
           <Image className="leaderboard-floater leaderboard-floater-scatter" src="/floating/ref-scatter-machine.png" alt="" width={1254} height={1254} unoptimized />
         </div>
         <div className="leaderboard-hero-copy">
-          <h1 id="leaderboard-title"><span>PACK</span><strong>DRAW</strong><em>RANKS.</em></h1>
-          <p>Live wager rankings for DirtyGamblers players on Pack Draw. Monthly run: {formatDateRange(sourceWindow)}.</p>
-        </div>
-        <div className="season-ticket" aria-label="Current leaderboard information">
-          <span className="ticket-hole ticket-hole-one" /><span className="ticket-hole ticket-hole-two" />
-          <PackDrawLogo className="packdraw-logo-ticket" />
-          <div><span>MONTHLY RUN</span><span>ENDS {formatDate(Number(sourceWindow.to) - 1).toUpperCase()}</span></div>
-          <b>{countdown}</b>
-          <span className="ticket-updated">AS OF {formatUpdatedAt(sourceWindow.updatedAt).toUpperCase()}</span>
+          <div className="leaderboard-logo-medallion">
+            <PackDrawLogo className="packdraw-logo-hero" />
+          </div>
+          <h1 id="leaderboard-title"><span>PACK DRAW</span><strong>LEADERBOARD</strong></h1>
+          <p>Monthly leaderboard rewards up for grabs. Current run: {formatDateRange(sourceWindow)}.</p>
         </div>
       </section>
 
-      <div className="leaderboard-stats" aria-label="Leaderboard statistics">
-        <div><span>PLAYERS</span><strong>{formatCompactNumber(players.length)}</strong></div>
-        <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(totalWagered)}</strong></div>
-        <div><span>PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
-        <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
-      </div>
+      <section className="leaderboard-prize-stage" aria-label="Pack Draw prize pool">
+        <PackDrawLogo className="prize-stage-logo" />
+        <h2>LEADERBOARD</h2>
+        <strong>{formatCurrency(prizePool)}</strong>
+        <span>REWARD</span>
+        <b>{countdown}</b>
+      </section>
+
+      <section className="leaderboard-period-note" aria-label="Current leaderboard information">
+        <strong>MONTHLY RUN</strong>
+        <p>Ends {formatDate(Number(sourceWindow.to) - 1)} | As of {formatUpdatedAt(sourceWindow.updatedAt)} UTC</p>
+      </section>
 
       <div className="platform-strip" aria-label="Leaderboard modes">
         <a className="platform-tile active" href="https://packdraw.com/" target="_blank" rel="noreferrer">
@@ -287,21 +289,12 @@ export default function LeaderboardPage() {
         </a>
       </div>
 
-      <section className="podium-section" aria-labelledby="podium-title">
-        <div className="podium-heading">
-          <div><h2 id="podium-title">TOP <em>THREE.</em></h2></div>
-        </div>
-        <div className="podium-grid">
-          {podiumOrder.length > 0 ? podiumOrder.map((player) => (
-            <article className={`podium-card podium-rank-${player.rank}`} key={player.rank}>
-              <span className="podium-number">#{player.rank}</span>
-              <span className="podium-avatar">{player.initials}</span>
-              <div className="podium-player"><strong>{maskedPlayerName(player.name)}</strong></div>
-              <div className="podium-score"><span>WAGERED</span><strong>{formatCurrency(player.points)}</strong></div>
-            </article>
-          )) : <div className="no-results">{isLoading ? "LOADING LIVE DATA..." : error ? error.toUpperCase() : "NO LIVE PLAYERS YET."}</div>}
-        </div>
-      </section>
+      <div className="leaderboard-stats" aria-label="Leaderboard statistics">
+        <div><span>PLAYERS</span><strong>{formatCompactNumber(players.length)}</strong></div>
+        <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(totalWagered)}</strong></div>
+        <div><span>PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
+        <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
+      </div>
 
       <section className="rankings-section" aria-labelledby="rankings-title">
         <div className="rankings-topbar">
@@ -318,13 +311,13 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="rank-list-header" aria-hidden="true">
-          <span>PLAYER</span><span>WAGERED</span><span>PRIZE</span>
+          <span>RANKS</span><span>USER</span><span>AMOUNT</span><span>PRIZE</span>
         </div>
         <ol className="rank-list" aria-label="Pack Draw player rankings">
           {filteredPlayers.map((player) => (
             <li className={`rank-row ${player.rank <= 3 ? "rank-row-top" : ""}`} key={`${player.rank}-${player.handle}-${player.name}`}>
+              <span className="rank-number">{player.rank === 1 ? "1st" : player.rank === 2 ? "2nd" : player.rank === 3 ? "3rd" : `${player.rank}th`}</span>
               <div className="rank-identity">
-                <span className="rank-number">{String(player.rank).padStart(2, "0")}</span>
                 <span className={`rank-move move-${player.movement}`}>{movementSymbol(player.movement)}</span>
                 <span className="rank-avatar">{player.initials}</span>
                 <span className="rank-name"><strong>{maskedPlayerName(player.name)}</strong></span>
@@ -335,6 +328,22 @@ export default function LeaderboardPage() {
           ))}
         </ol>
         {filteredPlayers.length === 0 && <div className="no-results">{isLoading ? "LOADING LIVE DATA..." : error ? error.toUpperCase() : "NO PLAYER FOUND."}</div>}
+      </section>
+
+      <section className="podium-section" aria-labelledby="podium-title">
+        <div className="podium-heading">
+          <div><h2 id="podium-title">TOP <em>THREE.</em></h2></div>
+        </div>
+        <div className="podium-grid">
+          {podiumOrder.length > 0 ? podiumOrder.map((player) => (
+            <article className={`podium-card podium-rank-${player.rank}`} key={player.rank}>
+              <span className="podium-number">#{player.rank}</span>
+              <span className="podium-avatar">{player.initials}</span>
+              <div className="podium-player"><strong>{maskedPlayerName(player.name)}</strong></div>
+              <div className="podium-score"><span>WAGERED</span><strong>{formatCurrency(player.points)}</strong></div>
+            </article>
+          )) : <div className="no-results">{isLoading ? "LOADING LIVE DATA..." : error ? error.toUpperCase() : "NO LIVE PLAYERS YET."}</div>}
+        </div>
       </section>
 
       <SiteFooter />
