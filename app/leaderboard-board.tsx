@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { LeaderboardPeriod } from "../lib/leaderboard-periods";
 import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow, type LeaderboardResponse } from "./leaderboard-request";
 import { useEffect, useMemo, useState } from "react";
-import { PackDrawLogo, ShuffleLogo } from "./site-shell";
+import { PackDrawLogo } from "./site-shell";
 
 const fallbackPrizePool = 1000;
 const fallbackSourceWindow = {
@@ -229,16 +229,10 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
         </div>
       </section>
 
-      <div className="platform-strip" aria-label="Leaderboard modes">
+      <div className="platform-strip" aria-label="Leaderboard platform">
         <a className="platform-tile active" href="https://packdraw.com/" target="_blank" rel="noreferrer">
-          <span>01</span>
           <div><PackDrawLogo className="mode-packdraw-logo" /></div>
           <b>LIVE</b>
-        </a>
-        <a className="platform-tile locked" href="https://shuffle.com/" target="_blank" rel="noreferrer">
-          <span>02</span>
-          <div><ShuffleLogo className="mode-shuffle-logo" /></div>
-          <b>SOON</b>
         </a>
       </div>
 
