@@ -212,10 +212,10 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
     <div id="live-leaderboard" className={embedded ? "leaderboard-content leaderboard-embedded" : "leaderboard-content"}>
 
       <section className="leaderboard-hero" aria-labelledby="leaderboard-title">
-        <div className="leaderboard-floaters" aria-hidden="true">
-          <Image className="leaderboard-floater leaderboard-floater-vs" src="/floating/ref-vs-badge.png" alt="" width={1254} height={1254} unoptimized />
-          <Image className="leaderboard-floater leaderboard-floater-scatter" src="/floating/ref-scatter-machine.png" alt="" width={1254} height={1254} unoptimized />
-        </div>
+        {!embedded && <div className="leaderboard-floaters" aria-hidden="true">
+          <Image className="leaderboard-floater leaderboard-floater-legacy" src="/floating/packdraw-legacy.jpeg" alt="" width={640} height={972} unoptimized />
+          <Image className="leaderboard-floater leaderboard-floater-atlantis" src="/floating/packdraw-atlantis.jpeg" alt="" width={640} height={972} unoptimized />
+        </div>}
         <div className="leaderboard-hero-copy">
           <PackDrawLogo className="packdraw-logo-hero" />
           <Title id="leaderboard-title" className="leaderboard-title">LEADERBOARD</Title>

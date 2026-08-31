@@ -310,10 +310,11 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
   padding: 122px 0 28px;
   text-align: center;
 }
-.leaderboard-floaters { pointer-events: none; position: absolute; z-index: 1; inset: 130px 0 30px; }
-.leaderboard-floater { position: absolute; object-fit: contain; filter: drop-shadow(0 14px 22px rgba(0,0,0,.5)); }
-.leaderboard-floater-vs { width: 100px; right: 3%; top: 0; animation: floatVs 7.8s ease-in-out infinite; }
-.leaderboard-floater-scatter { width: 110px; left: 3%; bottom: 0; animation: floatScatter 6.9s ease-in-out -1.8s infinite; }
+.leaderboard-floaters { pointer-events: none; position: absolute; z-index: 1; inset: 142px 0 30px; }
+.leaderboard-floater { position: absolute; width: 146px; height: auto; aspect-ratio: 640 / 972; object-fit: contain; border-radius: 8px; filter: drop-shadow(0 16px 24px rgba(0,0,0,.5)); }
+.leaderboard-floater-legacy { left: 2%; top: 8px; --pack-tilt: -7deg; animation: floatPack 8s ease-in-out infinite; }
+.leaderboard-floater-atlantis { right: 2%; top: 40px; --pack-tilt: 7deg; animation: floatPack 8s ease-in-out -4s infinite; }
+@keyframes floatPack { 0%,100% { transform: translateY(0) rotate(var(--pack-tilt)); } 50% { transform: translateY(-10px) rotate(calc(var(--pack-tilt) + 2deg)); } }
 .leaderboard-hero-copy { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
 .packdraw-logo-hero { justify-content: center; font-size: 24px; margin-bottom: 18px; }
 .packdraw-logo-hero img { width: 1.8em; height: 1.8em; }
@@ -330,7 +331,6 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
 .leaderboard-content { scroll-margin-top: 82px; }
 .leaderboard-embedded { border-top: 1px solid var(--line); }
 .leaderboard-embedded .leaderboard-hero { padding-top: 48px; }
-.leaderboard-embedded .leaderboard-floaters { display: none; }
 .leaderboard-full-link { display: inline-flex; align-items: center; gap: 12px; margin-top: 20px; padding: 8px 0; color: var(--yellow); font-size: 13px; border-bottom: 1px solid #55575e; }
 .leaderboard-full-link:hover { border-color: var(--yellow); }
 .leaderboard-history { padding: 56px 0 64px; border-top: 1px solid var(--line); background: #0c0c0e; }
@@ -473,8 +473,9 @@ a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid 
   .floating-scatter { width: 140px; right: -28px; bottom: 34px; }
   .scribble { display: none; }
   .leaderboard-hero { padding-top: 118px; }
-  .leaderboard-floater-vs { width: 112px; right: -5px; top: -5px; }
-  .leaderboard-floater-scatter { width: 118px; left: -10px; bottom: 105px; }
+  .leaderboard-floater { width: 112px; }
+  .leaderboard-floater-legacy { left: 0; }
+  .leaderboard-floater-atlantis { right: 0; }
   .season-ticket { min-height: 330px; }
   .packdraw-logo-ticket { font-size: 29px; }
   .leaderboard-stats { grid-template-columns: repeat(2, 1fr); }
