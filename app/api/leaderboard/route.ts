@@ -27,6 +27,7 @@ const PACKDRAW_PERIOD_START = process.env.PACKDRAW_PERIOD_START?.trim();
 const DEFAULT_LEADERBOARD_URL = "https://packdraw.com/api/v1/affiliates/leaderboard?apiKey=API_KEY";
 const FALLBACK_PRIZES = [500, 250, 150, 50, 25, 25];
 const PACKDRAW_PRIZES = parsePrizeList(process.env.PACKDRAW_PRIZES);
+const MAX_LEADERBOARD_PLAYERS = 10;
 const UPSTREAM_TIMEOUT_MS = 10_000;
 const CLIENT_REFRESH_SECONDS = 5 * 60;
 const RESPONSE_HEADERS = {
@@ -225,6 +226,7 @@ export async function GET(request: Request) {
       .map(normalizePlayer)
       .filter((player): player is LeaderboardPlayer => Boolean(player))
       .sort((left, right) => right.points - left.points)
+      .slice(0, MAX_LEADERBOARD_PLAYERS)
       .map((player, index) => ({
         ...player,
         rank: index + 1,

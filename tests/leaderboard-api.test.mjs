@@ -28,7 +28,15 @@ test("historical API requests are bounded, validated, and read-only", async (t) 
       after,
       before: wrongWindow || !before ? null : packDrawTimestamp(before),
       asOf: "2026-11-01T00:00:00Z",
-      leaderboard: [{ username: "TestSecond", userId: "2", wagerAmount: 50 }, { username: "TestFirst", userId: "1", wagerAmount: 100 }],
+      leaderboard: [
+        { username: "TestSecond", userId: "2", wagerAmount: 50 },
+        { username: "TestFirst", userId: "1", wagerAmount: 100 },
+        ...Array.from({ length: 10 }, (_, index) => ({
+          username: `Player${index + 3}`,
+          userId: String(index + 3),
+          wagerAmount: 49 - index,
+        })),
+      ],
     }), { headers: { "content-type": "application/json" } });
   });
 
@@ -41,6 +49,9 @@ test("historical API requests are bounded, validated, and read-only", async (t) 
   assert.equal(lastUrl.searchParams.get("before"), "10-1-2026");
   assert.equal(data.players[0].name, "TestFirst");
   assert.equal(data.players[0].winnings, "$500");
+  assert.equal(data.players.length, 10);
+  assert.deepEqual(data.players.map((player) => player.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.equal(data.players.some((player) => player.name === "Player12"), false);
   assert.equal(data.sourceWindow.to, Date.parse("2026-10-01T00:00:00Z"));
   assert.equal(JSON.stringify(data).includes("test-only-key"), false);
 
