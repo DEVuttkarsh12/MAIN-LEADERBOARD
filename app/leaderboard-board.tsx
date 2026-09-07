@@ -245,6 +245,22 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
       </div>
 
+      {podiumOrder.length > 0 && <section className="podium-section" aria-labelledby="podium-title">
+        <div className="podium-heading">
+          <div><h2 id="podium-title">TOP <em>THREE.</em></h2></div>
+        </div>
+        <div className="podium-grid">
+          {podiumOrder.length > 0 ? podiumOrder.map((player) => (
+            <article className={`podium-card podium-rank-${player.rank}`} key={player.rank}>
+              <span className="podium-number">#{player.rank}</span>
+              <span className="podium-avatar">{player.initials}</span>
+              <div className="podium-player"><strong>{maskedPlayerName(player.name)}</strong></div>
+              <div className="podium-score"><span>WAGERED</span><strong>{formatCurrency(player.points)}</strong></div>
+            </article>
+          )) : <div className="no-results">{isLoading ? "LOADING LIVE DATA..." : error ? error.toUpperCase() : "NO LIVE PLAYERS YET."}</div>}
+        </div>
+      </section>}
+
       <section className="rankings-section" aria-labelledby="rankings-title">
         <div className="rankings-topbar">
           <div><h2 id="rankings-title">ALL <em>PLAYERS.</em></h2></div>
@@ -261,22 +277,6 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
 
         <PlayerRows players={filteredPlayers} label="Pack Draw player rankings" emptyMessage={isLoading ? "LOADING LIVE DATA..." : error ? error : query ? "NO MATCHING PLAYERS." : "NO PLAYERS THIS PERIOD YET."} />
       </section>
-
-      {podiumOrder.length > 0 && <section className="podium-section" aria-labelledby="podium-title">
-        <div className="podium-heading">
-          <div><h2 id="podium-title">TOP <em>THREE.</em></h2></div>
-        </div>
-        <div className="podium-grid">
-          {podiumOrder.length > 0 ? podiumOrder.map((player) => (
-            <article className={`podium-card podium-rank-${player.rank}`} key={player.rank}>
-              <span className="podium-number">#{player.rank}</span>
-              <span className="podium-avatar">{player.initials}</span>
-              <div className="podium-player"><strong>{maskedPlayerName(player.name)}</strong></div>
-              <div className="podium-score"><span>WAGERED</span><strong>{formatCurrency(player.points)}</strong></div>
-            </article>
-          )) : <div className="no-results">{isLoading ? "LOADING LIVE DATA..." : error ? error.toUpperCase() : "NO LIVE PLAYERS YET."}</div>}
-        </div>
-      </section>}
 
       <PreviousLeaderboards periods={completedPeriods} loading={isLoading} error={error} />
     </div>
