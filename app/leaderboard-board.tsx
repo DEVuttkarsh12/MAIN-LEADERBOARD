@@ -17,13 +17,6 @@ function movementSymbol(value: Player["movement"]) {
   return value === "up" ? "^" : value === "down" ? "v" : "-";
 }
 
-function formatCompactNumber(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    notation: value >= 10000 ? "compact" : "standard",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -239,7 +232,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
       </div>
 
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
-        <div><span>PLAYERS</span><strong>{formatCompactNumber(players.length)}</strong></div>
+        <div><span>TOP</span><strong>10</strong></div>
         <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(totalWagered)}</strong></div>
         <div><span>PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
