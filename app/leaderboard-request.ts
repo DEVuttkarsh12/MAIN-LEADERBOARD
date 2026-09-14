@@ -20,6 +20,8 @@ export type SourceWindow = {
 
 export type LeaderboardResponse = {
   players?: Player[];
+  totalPlayers?: number;
+  totalWagered?: number;
   sourceWindow?: SourceWindow;
   prizePool?: number;
   prizes?: number[];

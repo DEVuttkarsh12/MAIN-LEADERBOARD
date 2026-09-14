@@ -119,6 +119,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
   const [error, setError] = useState<string | null>(null);
   const [sourceWindow, setSourceWindow] = useState<SourceWindow>(fallbackSourceWindow);
   const [prizePool, setPrizePool] = useState(fallbackPrizePool);
+  const [totalWagered, setTotalWagered] = useState(0);
   const [countdown, setCountdown] = useState("--D : --H");
 
   useEffect(() => {
@@ -135,7 +136,11 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
         const data = await fetchLeaderboard();
 
         if (isActive) {
-          setPlayers(Array.isArray(data.players) ? data.players : []);
+          const loadedPlayers = Array.isArray(data.players) ? data.players : [];
+          setPlayers(loadedPlayers);
+          setTotalWagered(typeof data.totalWagered === "number"
+            ? data.totalWagered
+            : loadedPlayers.reduce((total, player) => total + player.points, 0));
           setSourceWindow(validSourceWindow(data.sourceWindow));
           setCompletedPeriods(data.completedPeriods ?? []);
           setPrizePool(typeof data.prizePool === "number" ? data.prizePool : fallbackPrizePool);
@@ -143,6 +148,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
       } catch (loadError) {
         if (isActive) {
           setPlayers([]);
+          setTotalWagered(0);
           setError(loadError instanceof Error ? loadError.message : "Pack Draw leaderboard data is unavailable.");
         }
       } finally {
@@ -189,8 +195,6 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
     const topThree = players.slice(0, 3);
     return [topThree[1], topThree[0], topThree[2]].filter((player): player is Player => Boolean(player));
   }, [players]);
-
-  const totalWagered = useMemo(() => players.reduce((sum, player) => sum + player.points, 0), [players]);
 
   const filteredPlayers = useMemo(() => {
     const term = query.trim().toLowerCase();

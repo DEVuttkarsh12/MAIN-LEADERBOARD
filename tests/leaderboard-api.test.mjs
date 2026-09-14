@@ -52,6 +52,8 @@ test("historical API requests are bounded, validated, and read-only", async (t) 
   assert.equal(data.players.length, 10);
   assert.deepEqual(data.players.map((player) => player.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.equal(data.players.some((player) => player.name === "Player12"), false);
+  assert.equal(data.totalPlayers, 12);
+  assert.equal(data.totalWagered, 595);
   assert.equal(data.sourceWindow.to, Date.parse("2026-10-01T00:00:00Z"));
   assert.equal(JSON.stringify(data).includes("test-only-key"), false);
 

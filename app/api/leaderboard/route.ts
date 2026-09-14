@@ -222,10 +222,13 @@ export async function GET(request: Request) {
       return leaderboardResponse({ players: [], error: "Pack Draw could not verify this leaderboard period." }, 502);
     }
 
-    const players = readEntries(payload)
+    const rankedPlayers = readEntries(payload)
       .map(normalizePlayer)
       .filter((player): player is LeaderboardPlayer => Boolean(player))
-      .sort((left, right) => right.points - left.points)
+      .sort((left, right) => right.points - left.points);
+
+    const totalWagered = rankedPlayers.reduce((total, player) => total + player.points, 0);
+    const players = rankedPlayers
       .slice(0, MAX_LEADERBOARD_PLAYERS)
       .map((player, index) => ({
         ...player,
@@ -243,6 +246,8 @@ export async function GET(request: Request) {
 
     return leaderboardResponse({
       players,
+      totalPlayers: rankedPlayers.length,
+      totalWagered,
       sourceWindow,
       prizePool: PACKDRAW_PRIZES.reduce((total, prize) => total + prize, 0),
       prizes: PACKDRAW_PRIZES,
