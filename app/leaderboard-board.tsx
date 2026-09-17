@@ -3,24 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { LeaderboardPeriod } from "../lib/leaderboard-periods";
+import { monthlyPeriods, type LeaderboardPeriod } from "../lib/leaderboard-periods";
 import { PLATFORMS, PLATFORM_BY_ID, isPlatformId, prizePoolFor, type LeaderboardPlatform, type PlatformId } from "../lib/platforms";
 import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow, type LeaderboardResponse } from "./leaderboard-request";
 import { useEffect, useMemo, useState } from "react";
 import { KingzLogo, PackDrawLogo } from "./site-shell";
 
-const PACKDRAW_FALLBACK_WINDOW: SourceWindow = {
-  from: new Date("2026-08-31T00:00:00.000Z").getTime(),
-  to: new Date("2026-10-01T00:00:00.000Z").getTime(),
-};
-
-const KINGZ_FALLBACK_WINDOW: SourceWindow = {
-  from: new Date("2026-09-17T00:00:00.000Z").getTime(),
-  to: new Date("2026-10-17T00:00:00.000Z").getTime(),
-};
-
-function fallbackWindowFor(platform: LeaderboardPlatform): SourceWindow {
-  return platform.id === "kingz" ? KINGZ_FALLBACK_WINDOW : PACKDRAW_FALLBACK_WINDOW;
+function configuredSourceWindow(platform: LeaderboardPlatform): SourceWindow {
+  const current = monthlyPeriods(platform.defaultPeriodStart).current;
+  return { from: current.from, to: current.to };
 }
 
 function movementSymbol(value: Player["movement"]) {
@@ -67,7 +58,7 @@ function validSourceWindow(sourceWindow: SourceWindow | undefined, platform: Lea
     return sourceWindow;
   }
 
-  return fallbackWindowFor(platform);
+  return configuredSourceWindow(platform);
 }
 
 function formatDateRange(sourceWindow: SourceWindow, platform: LeaderboardPlatform) {
@@ -143,7 +134,8 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
   const [view, setView] = useState<"all" | "top6">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sourceWindow, setSourceWindow] = useState<SourceWindow>(() => fallbackWindowFor(platform));
+  const [sourceWindow, setSourceWindow] = useState<SourceWindow>(() => configuredSourceWindow(platform));
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(undefined);
   const [prizePool, setPrizePool] = useState(() => prizePoolFor(platform));
   const [totalWagered, setTotalWagered] = useState(0);
   const [countdown, setCountdown] = useState("--D : --H");
@@ -167,7 +159,8 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
           setTotalWagered(typeof data.totalWagered === "number"
             ? data.totalWagered
             : loadedPlayers.reduce((total, player) => total + player.points, 0));
-          setSourceWindow(validSourceWindow(data.sourceWindow, platform));
+          setSourceWindow(configuredSourceWindow(platform));
+          setUpdatedAt(data.sourceWindow?.updatedAt);
           setCompletedPeriods(data.completedPeriods ?? []);
           setPrizePool(typeof data.prizePool === "number" ? data.prizePool : prizePoolFor(platform));
         }
@@ -263,7 +256,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
             <div className="leaderboard-prize"><span>MONTHLY PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
             <div className="leaderboard-countdown"><span>TIME REMAINING</span><strong>{countdown}</strong></div>
           </div>
-          <p className="leaderboard-updated">{isLoading ? "Updating rankings..." : error ? "Rankings unavailable" : `Updated ${formatUpdatedAt(sourceWindow.updatedAt)} UTC`}</p>
+          <p className="leaderboard-updated">{isLoading ? "Updating rankings..." : error ? "Rankings unavailable" : `Updated ${formatUpdatedAt(updatedAt)} UTC`}</p>
           {embedded && <Link className="leaderboard-full-link" href="/leaderboard">Full leaderboard <b aria-hidden="true">-&gt;</b></Link>}
         </div>
       </section>
