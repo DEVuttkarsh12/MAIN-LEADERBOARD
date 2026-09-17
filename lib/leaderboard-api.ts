@@ -135,8 +135,8 @@ export function readApiKey(platform: LeaderboardPlatform): string | undefined {
   return process.env[platform.apiKeyEnv]?.trim() || undefined;
 }
 
-function readPeriodStart(platform: LeaderboardPlatform): string | undefined {
-  return process.env[platform.periodStartEnv]?.trim() || undefined;
+function readPeriodStart(platform: LeaderboardPlatform): string {
+  return process.env[platform.periodStartEnv]?.trim() || platform.defaultPeriodStart;
 }
 
 function readPrizeList(platform: LeaderboardPlatform): number[] {

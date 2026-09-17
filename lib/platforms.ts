@@ -9,6 +9,7 @@ export type LeaderboardPlatform = {
   urlEnv: string;
   prizesEnv: string;
   periodStartEnv: string;
+  defaultPeriodStart: string;
   defaultUrl: string;
   defaultPrizes: number[];
   maxPlayers: number;
@@ -24,6 +25,7 @@ export const PLATFORMS: LeaderboardPlatform[] = [
     urlEnv: "PACKDRAW_LEADERBOARD_URL",
     prizesEnv: "PACKDRAW_PRIZES",
     periodStartEnv: "PACKDRAW_PERIOD_START",
+    defaultPeriodStart: "2026-08-31",
     defaultUrl: "https://packdraw.com/api/v1/affiliates/leaderboard?apiKey=API_KEY",
     defaultPrizes: [500, 250, 150, 50, 25, 25],
     maxPlayers: 10,
@@ -37,6 +39,7 @@ export const PLATFORMS: LeaderboardPlatform[] = [
     urlEnv: "KINGZ_LEADERBOARD_URL",
     prizesEnv: "KINGZ_PRIZES",
     periodStartEnv: "KINGZ_PERIOD_START",
+    defaultPeriodStart: "2026-09-17",
     defaultUrl: "https://leaderboard.kingz.win/v1/external/affiliates",
     defaultPrizes: [2250, 1000, 500, 100, 100, 50],
     maxPlayers: Infinity,
