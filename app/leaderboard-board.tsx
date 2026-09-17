@@ -9,10 +9,19 @@ import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow,
 import { useEffect, useMemo, useState } from "react";
 import { KingzLogo, PackDrawLogo } from "./site-shell";
 
-const fallbackSourceWindow = {
+const PACKDRAW_FALLBACK_WINDOW: SourceWindow = {
   from: new Date("2026-08-31T00:00:00.000Z").getTime(),
   to: new Date("2026-10-01T00:00:00.000Z").getTime(),
 };
+
+const KINGZ_FALLBACK_WINDOW: SourceWindow = {
+  from: new Date("2026-09-17T00:00:00.000Z").getTime(),
+  to: new Date("2026-10-17T00:00:00.000Z").getTime(),
+};
+
+function fallbackWindowFor(platform: LeaderboardPlatform): SourceWindow {
+  return platform.id === "kingz" ? KINGZ_FALLBACK_WINDOW : PACKDRAW_FALLBACK_WINDOW;
+}
 
 function movementSymbol(value: Player["movement"]) {
   return value === "up" ? "^" : value === "down" ? "v" : "-";
@@ -48,7 +57,7 @@ function formatDate(value?: number) {
   }).format(new Date(value));
 }
 
-function validSourceWindow(sourceWindow?: SourceWindow): SourceWindow {
+function validSourceWindow(sourceWindow: SourceWindow | undefined, platform: LeaderboardPlatform): SourceWindow {
   if (
     sourceWindow &&
     Number.isFinite(sourceWindow.from) &&
@@ -58,11 +67,11 @@ function validSourceWindow(sourceWindow?: SourceWindow): SourceWindow {
     return sourceWindow;
   }
 
-  return fallbackSourceWindow;
+  return fallbackWindowFor(platform);
 }
 
-function formatDateRange(sourceWindow: SourceWindow) {
-  const validWindow = validSourceWindow(sourceWindow);
+function formatDateRange(sourceWindow: SourceWindow, platform: LeaderboardPlatform) {
+  const validWindow = validSourceWindow(sourceWindow, platform);
   return `${formatDate(validWindow.from)} - ${formatDate(Number(validWindow.to) - 1)}`;
 }
 
@@ -78,8 +87,8 @@ function formatUpdatedAt(value?: number) {
   }).format(new Date(value));
 }
 
-function periodCountdown(now: Date, sourceWindow: SourceWindow) {
-  const validWindow = validSourceWindow(sourceWindow);
+function periodCountdown(now: Date, sourceWindow: SourceWindow, platform: LeaderboardPlatform) {
+  const validWindow = validSourceWindow(sourceWindow, platform);
   const remainingMs = Math.max(0, Number(validWindow.to) - now.getTime());
   const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
   const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
@@ -134,7 +143,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
   const [view, setView] = useState<"all" | "top6">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sourceWindow, setSourceWindow] = useState<SourceWindow>(fallbackSourceWindow);
+  const [sourceWindow, setSourceWindow] = useState<SourceWindow>(() => fallbackWindowFor(platform));
   const [prizePool, setPrizePool] = useState(() => prizePoolFor(platform));
   const [totalWagered, setTotalWagered] = useState(0);
   const [countdown, setCountdown] = useState("--D : --H");
@@ -158,7 +167,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
           setTotalWagered(typeof data.totalWagered === "number"
             ? data.totalWagered
             : loadedPlayers.reduce((total, player) => total + player.points, 0));
-          setSourceWindow(validSourceWindow(data.sourceWindow));
+          setSourceWindow(validSourceWindow(data.sourceWindow, platform));
           setCompletedPeriods(data.completedPeriods ?? []);
           setPrizePool(typeof data.prizePool === "number" ? data.prizePool : prizePoolFor(platform));
         }
@@ -199,14 +208,14 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
 
   useEffect(() => {
     function refreshCountdown() {
-      setCountdown(periodCountdown(new Date(), sourceWindow));
+      setCountdown(periodCountdown(new Date(), sourceWindow, platform));
     }
 
     refreshCountdown();
     const timer = window.setInterval(refreshCountdown, 60 * 1000);
 
     return () => window.clearInterval(timer);
-  }, [sourceWindow]);
+  }, [sourceWindow, platform]);
 
   function selectPlatform(nextPlatform: PlatformId) {
     if (nextPlatform === platformId) {
@@ -249,7 +258,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
         <div className="leaderboard-hero-copy">
           <PlatformLogo platform={platform} className="packdraw-logo-hero" />
           <Title id="leaderboard-title" className="leaderboard-title">LEADERBOARD</Title>
-          <p className="leaderboard-period">{formatDateRange(sourceWindow)}</p>
+          <p className="leaderboard-period">{formatDateRange(sourceWindow, platform)}</p>
           <div className="leaderboard-summary">
             <div className="leaderboard-prize"><span>MONTHLY PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
             <div className="leaderboard-countdown"><span>TIME REMAINING</span><strong>{countdown}</strong></div>
@@ -359,7 +368,7 @@ function PreviousLeaderboards({ periods, platform, loading, error }: { periods: 
           <>
             <label className="history-picker">Completed period
               <select value={period.id} onChange={(event) => setSelected(event.target.value)}>
-                {periods.map((entry) => <option key={entry.id} value={entry.id}>{formatDateRange(entry)}</option>)}
+                {periods.map((entry) => <option key={entry.id} value={entry.id}>{formatDateRange(entry, platform)}</option>)}
               </select>
             </label>
             <HistoricalResults key={`${platform.id}-${period.id}`} period={period} platformId={platform.id} label={platform.label} />
@@ -391,7 +400,7 @@ function HistoricalResults({ period, platformId, label }: { period: LeaderboardP
 
   return (
     <div className="history-results" aria-busy={!data && !error}>
-      <p className="history-period">{label} &middot; {formatDateRange(period)} &middot; Completed</p>
+      <p className="history-period">{label} &middot; {formatDateRange(period, PLATFORM_BY_ID[platformId])} &middot; Completed</p>
       <PlayerRows players={data?.players ?? []} label="Previous player rankings" emptyMessage={error ?? (data ? "NO PLAYERS IN THIS PERIOD." : "LOADING PREVIOUS RESULTS...")} />
     </div>
   );
