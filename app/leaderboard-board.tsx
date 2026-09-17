@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { LeaderboardPeriod } from "../lib/leaderboard-periods";
 import { PLATFORMS, PLATFORM_BY_ID, isPlatformId, prizePoolFor, type LeaderboardPlatform, type PlatformId } from "../lib/platforms";
 import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow, type LeaderboardResponse } from "./leaderboard-request";
@@ -109,15 +110,6 @@ function maskedPlayerName(name: string) {
     .join("");
 }
 
-function platformFromUrl() {
-  if (typeof window === "undefined") {
-    return "packdraw" as PlatformId;
-  }
-
-  const value = new URLSearchParams(window.location.search).get("platform");
-  return isPlatformId(value) ? value : "packdraw";
-}
-
 function PlatformLogo({ platform, className = "" }: { platform: LeaderboardPlatform; className?: string }) {
   return platform.id === "packdraw"
     ? <PackDrawLogo className={className} />
@@ -125,8 +117,16 @@ function PlatformLogo({ platform, className = "" }: { platform: LeaderboardPlatf
 }
 
 export default function LeaderboardBoard({ embedded = false }: { embedded?: boolean }) {
+  const searchParams = useSearchParams();
+  const urlPlatform = isPlatformId(searchParams.get("platform")) ? searchParams.get("platform") : "packdraw";
+
+  return <LeaderboardBoardContent key={urlPlatform} embedded={embedded} initialPlatform={urlPlatform as PlatformId} />;
+}
+
+function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedded?: boolean; initialPlatform: PlatformId }) {
   const Title = embedded ? "h2" : "h1";
-  const [platformId, setPlatformId] = useState<PlatformId>(platformFromUrl);
+  const router = useRouter();
+  const platformId: PlatformId = initialPlatform;
   const platform = PLATFORM_BY_ID[platformId];
   const [completedPeriods, setCompletedPeriods] = useState<LeaderboardPeriod[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -213,25 +213,13 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
       return;
     }
 
-    setPlayers([]);
-    setTotalWagered(0);
-    setCompletedPeriods([]);
-    setSourceWindow(fallbackSourceWindow);
-    setPrizePool(prizePoolFor(PLATFORM_BY_ID[nextPlatform]));
-    setError(null);
-    setIsLoading(true);
-    setCountdown("--D : --H");
-    setPlatformId(nextPlatform);
-
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (nextPlatform === "packdraw") {
-        url.searchParams.delete("platform");
-      } else {
-        url.searchParams.set("platform", nextPlatform);
-      }
-      window.history.replaceState(null, "", url.toString());
+    const url = new URL(window.location.href);
+    if (nextPlatform === "packdraw") {
+      url.searchParams.delete("platform");
+    } else {
+      url.searchParams.set("platform", nextPlatform);
     }
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
   }
 
   const podiumOrder = useMemo(() => {

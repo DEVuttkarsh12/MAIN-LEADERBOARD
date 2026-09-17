@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { SiteFooter, SiteHeader } from "./site-shell";
 import LeaderboardBoard from "./leaderboard-board";
 
@@ -32,7 +33,7 @@ export default function Home() {
         </div>
       </section>
 
-      <LeaderboardBoard embedded />
+      <Suspense fallback={null}><LeaderboardBoard embedded /></Suspense>
 
       <section className="home-socials" aria-labelledby="social-title">
         <div className="social-heading">

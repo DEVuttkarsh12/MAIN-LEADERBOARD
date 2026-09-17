@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { isPlatformId } from "../../lib/platforms";
 import LeaderboardBoard from "../leaderboard-board";
 import { SiteFooter, SiteHeader } from "../site-shell";
@@ -13,7 +14,7 @@ export default async function LeaderboardPage({
   return (
     <main className="site-root leaderboard-page">
       <SiteHeader active="leaderboard" platform={platform} />
-      <LeaderboardBoard />
+      <Suspense fallback={null}><LeaderboardBoard /></Suspense>
       <SiteFooter />
     </main>
   );
