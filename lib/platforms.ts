@@ -39,7 +39,7 @@ export const PLATFORMS: LeaderboardPlatform[] = [
     periodStartEnv: "KINGZ_PERIOD_START",
     defaultUrl: "https://leaderboard.kingz.win/v1/external/affiliates",
     defaultPrizes: [2250, 1000, 500, 100, 100, 50],
-    maxPlayers: 10,
+    maxPlayers: Infinity,
   },
 ];
 

@@ -55,9 +55,9 @@ test("kingz leaderboard API is bounded, read-only, ranked, and secret-safe", asy
   assert.equal(data.players[0].name, "KingFirst");
   assert.equal(data.players[0].winnings, "$2,250");
   assert.equal(data.players[0].points, 100);
-  assert.equal(data.players.length, 10);
-  assert.deepEqual(data.players.map((player) => player.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  assert.equal(data.players.some((player) => player.name === "KingPlayer12"), false);
+  assert.equal(data.players.length, 12);
+  assert.deepEqual(data.players.map((player) => player.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  assert.equal(data.players.some((player) => player.name === "KingPlayer12"), true);
   assert.equal(data.totalPlayers, 12);
   assert.equal(data.totalWagered, 595);
   assert.equal(data.prizePool, 4000);
