@@ -237,6 +237,7 @@ function normalizeKingzPlayer(entry: RawRecord): NormalizedPlayer | undefined {
     pickText(entry, ["user_id", "userId", "player_id", "playerId", "id", "uid"]);
 
   const points = pickNumber(entry, [
+    "wagered_amount",
     "wager_amount",
     "wagerAmount",
     "total_wager",
