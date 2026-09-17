@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { LeaderboardPeriod } from "../lib/leaderboard-periods";
+import { PLATFORMS, PLATFORM_BY_ID, isPlatformId, prizePoolFor, type LeaderboardPlatform, type PlatformId } from "../lib/platforms";
 import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow, type LeaderboardResponse } from "./leaderboard-request";
 import { useEffect, useMemo, useState } from "react";
-import { PackDrawLogo } from "./site-shell";
+import { KingzLogo, PackDrawLogo } from "./site-shell";
 
-const fallbackPrizePool = 1000;
 const fallbackSourceWindow = {
   from: new Date("2026-08-31T00:00:00.000Z").getTime(),
   to: new Date("2026-10-01T00:00:00.000Z").getTime(),
@@ -109,8 +109,25 @@ function maskedPlayerName(name: string) {
     .join("");
 }
 
+function platformFromUrl() {
+  if (typeof window === "undefined") {
+    return "packdraw" as PlatformId;
+  }
+
+  const value = new URLSearchParams(window.location.search).get("platform");
+  return isPlatformId(value) ? value : "packdraw";
+}
+
+function PlatformLogo({ platform, className = "" }: { platform: LeaderboardPlatform; className?: string }) {
+  return platform.id === "packdraw"
+    ? <PackDrawLogo className={className} />
+    : <KingzLogo className={className} />;
+}
+
 export default function LeaderboardBoard({ embedded = false }: { embedded?: boolean }) {
   const Title = embedded ? "h2" : "h1";
+  const [platformId, setPlatformId] = useState<PlatformId>(platformFromUrl);
+  const platform = PLATFORM_BY_ID[platformId];
   const [completedPeriods, setCompletedPeriods] = useState<LeaderboardPeriod[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [query, setQuery] = useState("");
@@ -118,7 +135,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sourceWindow, setSourceWindow] = useState<SourceWindow>(fallbackSourceWindow);
-  const [prizePool, setPrizePool] = useState(fallbackPrizePool);
+  const [prizePool, setPrizePool] = useState(() => prizePoolFor(platform));
   const [totalWagered, setTotalWagered] = useState(0);
   const [countdown, setCountdown] = useState("--D : --H");
 
@@ -133,7 +150,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
       setError(null);
 
       try {
-        const data = await fetchLeaderboard();
+        const data = await fetchLeaderboard(platformId);
 
         if (isActive) {
           const loadedPlayers = Array.isArray(data.players) ? data.players : [];
@@ -143,13 +160,13 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
             : loadedPlayers.reduce((total, player) => total + player.points, 0));
           setSourceWindow(validSourceWindow(data.sourceWindow));
           setCompletedPeriods(data.completedPeriods ?? []);
-          setPrizePool(typeof data.prizePool === "number" ? data.prizePool : fallbackPrizePool);
+          setPrizePool(typeof data.prizePool === "number" ? data.prizePool : prizePoolFor(platform));
         }
       } catch (loadError) {
         if (isActive) {
           setPlayers([]);
           setTotalWagered(0);
-          setError(loadError instanceof Error ? loadError.message : "Pack Draw leaderboard data is unavailable.");
+          setError(loadError instanceof Error ? loadError.message : `${platform.label} leaderboard data is unavailable.`);
         }
       } finally {
         if (isActive) {
@@ -178,7 +195,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, []);
+  }, [platformId, platform]);
 
   useEffect(() => {
     function refreshCountdown() {
@@ -190,6 +207,32 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
 
     return () => window.clearInterval(timer);
   }, [sourceWindow]);
+
+  function selectPlatform(nextPlatform: PlatformId) {
+    if (nextPlatform === platformId) {
+      return;
+    }
+
+    setPlayers([]);
+    setTotalWagered(0);
+    setCompletedPeriods([]);
+    setSourceWindow(fallbackSourceWindow);
+    setPrizePool(prizePoolFor(PLATFORM_BY_ID[nextPlatform]));
+    setError(null);
+    setIsLoading(true);
+    setCountdown("--D : --H");
+    setPlatformId(nextPlatform);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (nextPlatform === "packdraw") {
+        url.searchParams.delete("platform");
+      } else {
+        url.searchParams.set("platform", nextPlatform);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }
 
   const podiumOrder = useMemo(() => {
     const topThree = players.slice(0, 3);
@@ -216,7 +259,7 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
           <Image className="leaderboard-floater leaderboard-floater-gold" src="/floating/leaderboard-gold-bars.png" alt="" width={512} height={326} unoptimized />
         </div>}
         <div className="leaderboard-hero-copy">
-          <PackDrawLogo className="packdraw-logo-hero" />
+          <PlatformLogo platform={platform} className="packdraw-logo-hero" />
           <Title id="leaderboard-title" className="leaderboard-title">LEADERBOARD</Title>
           <p className="leaderboard-period">{formatDateRange(sourceWindow)}</p>
           <div className="leaderboard-summary">
@@ -229,10 +272,18 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
       </section>
 
       <div className="platform-strip" aria-label="Leaderboard platform">
-        <a className="platform-tile active" href="https://packdraw.com/" target="_blank" rel="noreferrer">
-          <div><PackDrawLogo className="mode-packdraw-logo" /></div>
-          <b>LIVE</b>
-        </a>
+        {PLATFORMS.map((entry) => {
+          const active = entry.id === platformId;
+          return (
+            <button key={entry.id} type="button" className={`platform-tile ${active ? "active" : ""}`} onClick={() => selectPlatform(entry.id)} aria-pressed={active}>
+              <div>
+                <PlatformLogo platform={entry} className="mode-platform-logo" />
+                <strong>{entry.label}</strong>
+              </div>
+              <b>{active ? "LIVE" : "VIEW"}</b>
+            </button>
+          );
+        })}
       </div>
 
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
@@ -272,10 +323,10 @@ export default function LeaderboardBoard({ embedded = false }: { embedded?: bool
           <button type="button" className={view === "top6" ? "active" : ""} onClick={() => setView("top6")} aria-pressed={view === "top6"}>Top 6 <span>{Math.min(players.length, 6)}</span></button>
         </div>
 
-        <PlayerRows players={filteredPlayers} label="Pack Draw player rankings" emptyMessage={isLoading ? "LOADING LIVE DATA..." : error ? error : query ? "NO MATCHING PLAYERS." : "NO PLAYERS THIS PERIOD YET."} />
+        <PlayerRows players={filteredPlayers} label="player rankings" emptyMessage={isLoading ? "LOADING LIVE DATA..." : error ? error : query ? "NO MATCHING PLAYERS." : "NO PLAYERS THIS PERIOD YET."} />
       </section>
 
-      <PreviousLeaderboards periods={completedPeriods} loading={isLoading} error={error} />
+      <PreviousLeaderboards periods={completedPeriods} platform={platform} loading={isLoading} error={error} />
     </div>
   );
 }
@@ -305,7 +356,7 @@ function PlayerRows({ players, label, emptyMessage }: { players: Player[]; label
   );
 }
 
-function PreviousLeaderboards({ periods, loading, error }: { periods: LeaderboardPeriod[]; loading: boolean; error: string | null }) {
+function PreviousLeaderboards({ periods, platform, loading, error }: { periods: LeaderboardPeriod[]; platform: LeaderboardPlatform; loading: boolean; error: string | null }) {
   const [selected, setSelected] = useState("");
   const period = periods.find((entry) => entry.id === selected) ?? periods[0];
 
@@ -323,11 +374,11 @@ function PreviousLeaderboards({ periods, loading, error }: { periods: Leaderboar
                 {periods.map((entry) => <option key={entry.id} value={entry.id}>{formatDateRange(entry)}</option>)}
               </select>
             </label>
-            <HistoricalResults key={period.id} period={period} />
+            <HistoricalResults key={`${platform.id}-${period.id}`} period={period} platformId={platform.id} label={platform.label} />
           </>
         ) : (
           <div className="history-empty" role="status">
-            <strong>{loading ? "Checking previous leaderboards..." : error ? "Previous leaderboards are unavailable." : "No completed Pack Draw leaderboards yet."}</strong>
+            <strong>{loading ? "Checking previous leaderboards..." : error ? "Previous leaderboards are unavailable." : "No completed leaderboards yet."}</strong>
             {!loading && !error && <p>The first results will appear here when the current monthly run ends.</p>}
           </div>
         )}
@@ -336,24 +387,24 @@ function PreviousLeaderboards({ periods, loading, error }: { periods: Leaderboar
   );
 }
 
-function HistoricalResults({ period }: { period: LeaderboardPeriod }) {
+function HistoricalResults({ period, platformId, label }: { period: LeaderboardPeriod; platformId: PlatformId; label: string }) {
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    void fetchLeaderboard(period.id).then((result) => {
+    void fetchLeaderboard(platformId, period.id).then((result) => {
       if (active) setData(result);
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : "Previous leaderboard is unavailable.");
     });
     return () => { active = false; };
-  }, [period.id]);
+  }, [platformId, period.id]);
 
   return (
     <div className="history-results" aria-busy={!data && !error}>
-      <p className="history-period">Pack Draw &middot; {formatDateRange(period)} &middot; Completed</p>
-      <PlayerRows players={data?.players ?? []} label="Previous Pack Draw player rankings" emptyMessage={error ?? (data ? "NO PLAYERS IN THIS PERIOD." : "LOADING PREVIOUS RESULTS...")} />
+      <p className="history-period">{label} &middot; {formatDateRange(period)} &middot; Completed</p>
+      <PlayerRows players={data?.players ?? []} label="Previous player rankings" emptyMessage={error ?? (data ? "NO PLAYERS IN THIS PERIOD." : "LOADING PREVIOUS RESULTS...")} />
     </div>
   );
 }

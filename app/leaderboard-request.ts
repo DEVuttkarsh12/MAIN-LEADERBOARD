@@ -1,6 +1,7 @@
 "use client";
 
 import type { LeaderboardPeriod } from "../lib/leaderboard-periods";
+import type { PlatformId } from "../lib/platforms";
 
 export type Player = {
   rank: number;
@@ -27,6 +28,8 @@ export type LeaderboardResponse = {
   prizes?: number[];
   error?: string;
   completedPeriods?: LeaderboardPeriod[];
+  platform?: PlatformId;
+  name?: string;
 };
 
 export const leaderboardRefreshMs = 5 * 60 * 1000;
@@ -36,8 +39,17 @@ const cache = new Map<string, CachedResult>();
 const pending = new Map<string, Promise<LeaderboardResponse>>();
 
 // Reuse a recent read when moving between Home and Leaderboard.
-export async function fetchLeaderboard(period?: string): Promise<LeaderboardResponse> {
-  const url = period ? `/api/leaderboard?period=${encodeURIComponent(period)}` : "/api/leaderboard";
+export async function fetchLeaderboard(
+  platform: PlatformId = "packdraw",
+  period?: string,
+): Promise<LeaderboardResponse> {
+  const search = new URLSearchParams();
+  if (platform !== "packdraw") search.set("platform", platform);
+  if (period) search.set("period", period);
+  const query = search.toString();
+  const url = query ? `/api/leaderboard?${query}` : "/api/leaderboard";
+  const sourceLabel = platform === "kingz" ? "Kingz" : "Pack Draw";
+
   const cached = cache.get(url);
   if (cached && cached.expiresAt > Date.now()) {
     if (cached.error) throw cached.error;
@@ -53,11 +65,11 @@ export async function fetchLeaderboard(period?: string): Promise<LeaderboardResp
     try {
       const response = await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
       const data = await response.json() as LeaderboardResponse;
-      if (!response.ok) throw new Error(data.error ?? "Pack Draw leaderboard data is unavailable.");
+      if (!response.ok) throw new Error(data.error ?? `${sourceLabel} leaderboard data is unavailable.`);
       cache.set(url, { data, expiresAt: requestedAt + leaderboardRefreshMs });
       return data;
     } catch (cause) {
-      const error = cause instanceof Error ? cause : new Error("Pack Draw leaderboard data is unavailable.");
+      const error = cause instanceof Error ? cause : new Error(`${sourceLabel} leaderboard data is unavailable.`);
       cache.set(url, { error, expiresAt: requestedAt + leaderboardRefreshMs });
       throw error;
     } finally {

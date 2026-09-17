@@ -45,6 +45,8 @@ test("historical API requests are bounded, validated, and read-only", async (t) 
   const response = await request("/api/leaderboard?period=2026-08-31");
   assert.equal(response.status, 200, JSON.stringify({ body: await response.clone().text(), calls, after: lastUrl?.searchParams.get("after"), before: lastUrl?.searchParams.get("before") }));
   const data = await response.json();
+  assert.equal(data.platform, "packdraw");
+  assert.equal(data.name, "Pack Draw");
   assert.equal(lastUrl.searchParams.get("after"), "8-31-2026");
   assert.equal(lastUrl.searchParams.get("before"), "10-1-2026");
   assert.equal(data.players[0].name, "TestFirst");

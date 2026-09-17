@@ -45,22 +45,41 @@ test("shared read-only requests coalesce, cache recent reads, and back off error
     return new Response(JSON.stringify(fail ? { error: "Rate limited" } : { players: [] }), { status: fail ? 429 : 200 });
   });
 
-  await Promise.all([fetchLeaderboard(), fetchLeaderboard()]);
+  await Promise.all([fetchLeaderboard("packdraw"), fetchLeaderboard("packdraw")]);
   assert.equal(calls, 1);
-  await fetchLeaderboard();
+  await fetchLeaderboard("packdraw");
   assert.equal(calls, 1);
   now += leaderboardRefreshMs;
-  await fetchLeaderboard();
+  await fetchLeaderboard("packdraw");
   assert.equal(calls, 2);
 
-  await fetchLeaderboard("2026-08-31");
+  await fetchLeaderboard("packdraw", "2026-08-31");
   assert.equal(calls, 3);
-  await fetchLeaderboard("2026-08-31");
+  await fetchLeaderboard("packdraw", "2026-08-31");
   assert.equal(calls, 3);
 
   fail = true;
   now += leaderboardRefreshMs;
-  await assert.rejects(fetchLeaderboard(), /Rate limited/);
-  await assert.rejects(fetchLeaderboard(), /Rate limited/);
+  await assert.rejects(fetchLeaderboard("packdraw"), /Rate limited/);
+  await assert.rejects(fetchLeaderboard("packdraw"), /Rate limited/);
   assert.equal(calls, 4);
+});
+
+test("fetchLeaderboard scopes urls by platform and keeps the default pack-draw route stable", async (t) => {
+  const urls = [];
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    urls.push(String(url));
+    assert.equal(options.method, "GET");
+    return new Response(JSON.stringify({ players: [] }), { status: 200 });
+  });
+
+  await fetchLeaderboard("packdraw");
+  await fetchLeaderboard("kingz");
+  await fetchLeaderboard("kingz", "2026-08-31");
+
+  assert.deepEqual(urls, [
+    "/api/leaderboard",
+    "/api/leaderboard?platform=kingz",
+    "/api/leaderboard?platform=kingz&period=2026-08-31",
+  ]);
 });
