@@ -277,7 +277,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
       </div>
 
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
-        <div><span>TOP</span><strong>{platform.id === "kingz" ? players.length : platform.maxPlayers}</strong></div>
+        <div><span>TOP</span><strong>{platform.maxPlayers}</strong></div>
         <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(totalWagered)}</strong></div>
         <div><span>PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>

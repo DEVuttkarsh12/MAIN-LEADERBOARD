@@ -42,7 +42,7 @@ export const PLATFORMS: LeaderboardPlatform[] = [
     defaultPeriodStart: "2026-09-17",
     defaultUrl: "https://leaderboard.kingz.win/v1/external/affiliates",
     defaultPrizes: [2250, 1000, 500, 100, 100, 50],
-    maxPlayers: Infinity,
+    maxPlayers: 10,
   },
 ];
 
