@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { monthlyPeriods } from "../lib/leaderboard-periods.ts";
+import { biweeklyPeriods, monthlyPeriods } from "../lib/leaderboard-periods.ts";
 import { fetchLeaderboard, leaderboardRefreshMs } from "../app/leaderboard-request.ts";
 
 const at = (date) => Date.parse(`${date}T00:00:00Z`);
@@ -30,6 +30,16 @@ test("period boundaries handle year changes, leap years, and invalid settings", 
   assert.equal((leap.current.to - leap.current.from) / 86400000, 29);
   assert.equal(monthlyPeriods("2026-02-30", at("2026-09-01")).current.id, "2026-08-31");
   assert.equal(monthlyPeriods("2026-08-15", at("2026-09-15")).completed[0].to, at("2026-09-15"));
+});
+
+test("Kingz starts a new 14-day period on October 1", () => {
+  const previous = biweeklyPeriods("2026-09-17", at("2026-09-30"));
+  assert.deepEqual(previous.current, { id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-01") });
+  assert.deepEqual(previous.completed, []);
+
+  const current = biweeklyPeriods("2026-09-17", at("2026-10-01"));
+  assert.deepEqual(current.current, { id: "2026-10-01", from: at("2026-10-01"), to: at("2026-10-15") });
+  assert.deepEqual(current.completed, [{ id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-01") }]);
 });
 
 test("shared read-only requests coalesce, cache recent reads, and back off errors", async (t) => {

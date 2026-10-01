@@ -71,3 +71,22 @@ export function monthlyPeriods(start: string | undefined, now = Date.now()) {
     completed: completed.reverse(),
   };
 }
+
+export function biweeklyPeriods(start: string | undefined, now = Date.now()) {
+  const configuredStart = parseDateOnly(start) ?? Date.UTC(2026, 8, 17);
+  const periodLength = 14 * 24 * 60 * 60 * 1000;
+  let from = configuredStart;
+  let to = from + periodLength;
+  const completed: LeaderboardPeriod[] = [];
+
+  while (now >= to) {
+    completed.push({ id: new Date(from).toISOString().slice(0, 10), from, to });
+    from = to;
+    to += periodLength;
+  }
+
+  return {
+    current: { id: new Date(from).toISOString().slice(0, 10), from, to },
+    completed: completed.reverse(),
+  };
+}

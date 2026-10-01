@@ -1,6 +1,6 @@
 import type { LeaderboardPlatform, PlatformId } from "./platforms";
 import { PLATFORM_BY_ID } from "./platforms";
-import { monthlyPeriods, type LeaderboardPeriod } from "./leaderboard-periods";
+import { biweeklyPeriods, monthlyPeriods, type LeaderboardPeriod } from "./leaderboard-periods";
 
 export type LeaderboardPlayer = {
   rank: number;
@@ -397,7 +397,10 @@ export async function getLeaderboard(options: {
     };
   }
 
-  const periods = monthlyPeriods(readPeriodStart(platform));
+  const periodStart = readPeriodStart(platform);
+  const periods = platform.id === "kingz"
+    ? biweeklyPeriods(periodStart)
+    : monthlyPeriods(periodStart);
   const isHistorical = options.periodId !== null;
   const period = isHistorical
     ? periods.completed.find((entry) => entry.id === options.periodId)

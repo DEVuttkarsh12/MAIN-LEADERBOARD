@@ -6,7 +6,7 @@ test("kingz leaderboard API is bounded, read-only, ranked, and secret-safe", asy
   process.env.KINGZ_PERIOD_START = "2026-08-31";
   process.env.KINGZ_LEADERBOARD_URL = "https://leaderboard.kingz.win/v1/external/affiliates";
   process.env.KINGZ_PRIZES = "2250,1000,500,100,100,50";
-  t.mock.method(Date, "now", () => Date.parse("2026-11-01T00:00:00Z"));
+  t.mock.method(Date, "now", () => Date.parse("2026-10-01T00:00:00Z"));
   let calls = 0;
   let wrongWindow = false;
   let lastUrl;
@@ -19,13 +19,13 @@ test("kingz leaderboard API is bounded, read-only, ranked, and secret-safe", asy
     assert.equal(upstream.body, null);
     assert.equal(lastUrl.searchParams.get("key"), "test-only-kingz-key");
     return new Response(JSON.stringify({
-      start_at: wrongWindow ? "2026-07-01" : "2026-08-31",
+      start_at: wrongWindow ? "2026-07-01" : "2026-09-17",
       end_at: "2026-09-30",
-      cache_updated_at: "2026-11-01 00:00:00",
+      cache_updated_at: "2026-10-01 00:00:00",
       leaderboard: {
         title: "Dirtygamblers - Kingz",
         start_date: "2026-09-17T00:00:00.000Z",
-        end_date: "2026-10-17T00:00:00.000Z",
+        end_date: "2026-10-01T00:00:00.000Z",
         type: "wagering",
         status: "active",
       },
@@ -44,9 +44,9 @@ test("kingz leaderboard API is bounded, read-only, ranked, and secret-safe", asy
   const { default: worker } = await import("../dist/server/index.js");
   const request = (path) => worker.fetch(new Request(`http://localhost${path}`), {}, { waitUntil() {}, passThroughOnException() {} });
 
-  const response = await request("/api/leaderboard?platform=kingz&period=2026-08-31");
+  const response = await request("/api/leaderboard?platform=kingz&period=2026-09-17");
   assert.equal(response.status, 200, JSON.stringify({ body: await response.clone().text(), calls, url: lastUrl?.href }));
-  assert.equal(lastUrl.searchParams.get("start_at"), "2026-08-31");
+  assert.equal(lastUrl.searchParams.get("start_at"), "2026-09-17");
   assert.equal(lastUrl.searchParams.get("end_at"), "2026-09-30");
 
   const data = await response.json();
@@ -62,6 +62,7 @@ test("kingz leaderboard API is bounded, read-only, ranked, and secret-safe", asy
   assert.equal(data.totalWagered, 595);
   assert.equal(data.prizePool, 4000);
   assert.deepEqual(data.prizes, [2250, 1000, 500, 100, 100, 50]);
+  assert.equal(data.sourceWindow.from, Date.parse("2026-09-17T00:00:00Z"));
   assert.equal(data.sourceWindow.to, Date.parse("2026-10-01T00:00:00Z"));
   assert.equal(JSON.stringify(data).includes("test-only-kingz-key"), false);
 
@@ -77,14 +78,16 @@ test("kingz leaderboard API is bounded, read-only, ranked, and secret-safe", asy
   assert.equal(calls, 1);
 
   wrongWindow = true;
-  const unbounded = await request("/api/leaderboard?platform=kingz&period=2026-08-31");
+  const unbounded = await request("/api/leaderboard?platform=kingz&period=2026-09-17");
   assert.equal(unbounded.status, 502);
   assert.deepEqual((await unbounded.json()).players, []);
 
   wrongWindow = false;
   const live = await request("/api/leaderboard?platform=kingz");
   assert.equal(live.status, 200);
-  assert.equal(lastUrl.searchParams.get("start_at"), "2026-11-01");
-  assert.equal(lastUrl.searchParams.get("end_at"), "2026-11-30");
-  assert.deepEqual((await live.json()).completedPeriods.map((period) => period.id), ["2026-10-01", "2026-08-31"]);
+  assert.equal(lastUrl.searchParams.get("start_at"), "2026-10-01");
+  assert.equal(lastUrl.searchParams.get("end_at"), "2026-10-14");
+  const liveData = await live.json();
+  assert.equal(liveData.sourceWindow.to, Date.parse("2026-10-15T00:00:00Z"));
+  assert.deepEqual(liveData.completedPeriods.map((period) => period.id), ["2026-09-17"]);
 });
