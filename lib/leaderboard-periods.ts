@@ -72,9 +72,9 @@ export function monthlyPeriods(start: string | undefined, now = Date.now()) {
   };
 }
 
-export function biweeklyPeriods(start: string | undefined, now = Date.now()) {
+export function thirtyDayPeriods(start: string | undefined, now = Date.now()) {
   const configuredStart = parseDateOnly(start) ?? Date.UTC(2026, 8, 17);
-  const periodLength = 14 * 24 * 60 * 60 * 1000;
+  const periodLength = 30 * 24 * 60 * 60 * 1000;
   let from = configuredStart;
   let to = from + periodLength;
   const completed: LeaderboardPeriod[] = [];

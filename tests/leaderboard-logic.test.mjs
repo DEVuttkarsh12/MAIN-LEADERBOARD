@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { biweeklyPeriods, monthlyPeriods } from "../lib/leaderboard-periods.ts";
+import { thirtyDayPeriods, monthlyPeriods } from "../lib/leaderboard-periods.ts";
 import { fetchLeaderboard, leaderboardRefreshMs } from "../app/leaderboard-request.ts";
 
 const at = (date) => Date.parse(`${date}T00:00:00Z`);
@@ -32,14 +32,20 @@ test("period boundaries handle year changes, leap years, and invalid settings", 
   assert.equal(monthlyPeriods("2026-08-15", at("2026-09-15")).completed[0].to, at("2026-09-15"));
 });
 
-test("Kingz starts a new 14-day period on October 1", () => {
-  const previous = biweeklyPeriods("2026-09-17", at("2026-09-30"));
-  assert.deepEqual(previous.current, { id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-01") });
-  assert.deepEqual(previous.completed, []);
+test("Kingz continues the September 17 run for 30 days before rolling over", () => {
+  for (const day of ["2026-09-30", "2026-10-01", "2026-10-16"]) {
+    const periods = thirtyDayPeriods("2026-09-17", at(day));
+    assert.deepEqual(periods.current, { id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-17") });
+    assert.deepEqual(periods.completed, []);
+  }
 
-  const current = biweeklyPeriods("2026-09-17", at("2026-10-01"));
-  assert.deepEqual(current.current, { id: "2026-10-01", from: at("2026-10-01"), to: at("2026-10-15") });
-  assert.deepEqual(current.completed, [{ id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-01") }]);
+  const rolled = thirtyDayPeriods("2026-09-17", at("2026-10-17"));
+  assert.deepEqual(rolled.current, { id: "2026-10-17", from: at("2026-10-17"), to: at("2026-11-16") });
+  assert.deepEqual(rolled.completed, [{ id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-17") }]);
+
+  const following = thirtyDayPeriods("2026-09-17", at("2026-11-16"));
+  assert.deepEqual(following.completed.map((period) => period.id), ["2026-10-17", "2026-09-17"]);
+  assert.equal(following.current.from, rolled.current.to);
 });
 
 test("shared read-only requests coalesce, cache recent reads, and back off errors", async (t) => {

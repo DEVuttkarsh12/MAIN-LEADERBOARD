@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { biweeklyPeriods, monthlyPeriods, type LeaderboardPeriod } from "../lib/leaderboard-periods";
+import { thirtyDayPeriods, monthlyPeriods, type LeaderboardPeriod } from "../lib/leaderboard-periods";
 import { PLATFORMS, PLATFORM_BY_ID, isPlatformId, prizePoolFor, type LeaderboardPlatform, type PlatformId } from "../lib/platforms";
 import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow, type LeaderboardResponse } from "./leaderboard-request";
 import { useEffect, useMemo, useState } from "react";
@@ -11,7 +11,7 @@ import { KingzLogo, PackDrawLogo } from "./site-shell";
 
 function configuredSourceWindow(platform: LeaderboardPlatform): SourceWindow {
   const current = platform.id === "kingz"
-    ? biweeklyPeriods(platform.defaultPeriodStart).current
+    ? thirtyDayPeriods(platform.defaultPeriodStart).current
     : monthlyPeriods(platform.defaultPeriodStart).current;
   return { from: current.from, to: current.to };
 }
@@ -255,7 +255,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
           <Title id="leaderboard-title" className="leaderboard-title">LEADERBOARD</Title>
           <p className="leaderboard-period">{formatDateRange(sourceWindow, platform)}</p>
           <div className="leaderboard-summary">
-            <div className="leaderboard-prize"><span>{platform.id === "kingz" ? "BIWEEKLY" : "MONTHLY"} PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
+            <div className="leaderboard-prize"><span>MONTHLY PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
             <div className="leaderboard-countdown"><span>TIME REMAINING</span><strong>{countdown}</strong></div>
           </div>
           <p className="leaderboard-updated">{isLoading ? "Updating rankings..." : error ? "Rankings unavailable" : `Updated ${formatUpdatedAt(updatedAt)} UTC`}</p>
@@ -356,7 +356,7 @@ function PreviousLeaderboards({ periods, platform, loading, error }: { periods: 
     <section className="leaderboard-history" aria-labelledby="history-title">
       <div className="history-inner">
         <div className="history-heading">
-          <span className="section-code">{platform.id === "kingz" ? "PAST PERIODS" : "PAST MONTHS"}</span>
+          <span className="section-code">PAST MONTHS</span>
           <h2 id="history-title">PREVIOUS <em>LEADERBOARDS.</em></h2>
         </div>
         {period ? (
