@@ -136,10 +136,20 @@ export function readApiKey(platform: LeaderboardPlatform): string | undefined {
 }
 
 function readPeriodStart(platform: LeaderboardPlatform): string {
+  if (platform.id === "kingz") {
+    // Keep the campaign's start date independent of stale hosting settings.
+    return platform.defaultPeriodStart;
+  }
+
   return process.env[platform.periodStartEnv]?.trim() || platform.defaultPeriodStart;
 }
 
 function readPrizeList(platform: LeaderboardPlatform): number[] {
+  if (platform.id === "packdraw") {
+    // Keep the advertised payouts independent of stale hosting settings.
+    return platform.defaultPrizes;
+  }
+
   const prizes = process.env[platform.prizesEnv]
     ?.split(/[\s,]+/)
     .map((amount) => Number(amount.trim()))
