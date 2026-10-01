@@ -188,21 +188,35 @@ function readPackDrawEntries(payload: unknown): RawRecord[] {
 }
 
 function readKingzEntries(payload: unknown): RawRecord[] {
-  if (Array.isArray(payload)) {
-    return payload.filter(isRecord);
-  }
+  const candidates: RawRecord[][] = [];
 
-  if (!isRecord(payload)) {
-    return [];
-  }
+  function collect(value: unknown, depth: number): void {
+    if (depth > 6) return;
 
-  for (const key of ["affiliates", "players", "data", "results", "entries", "leaderboard"]) {
-    if (Array.isArray(payload[key])) {
-      return payload[key].filter(isRecord);
+    if (Array.isArray(value)) {
+      const records = value.filter(isRecord);
+      if (records.length > 0) candidates.push(records);
+      for (const entry of records) collect(entry, depth + 1);
+      return;
+    }
+
+    if (isRecord(value)) {
+      for (const nested of Object.values(value)) collect(nested, depth + 1);
     }
   }
 
-  return [];
+  collect(payload, 0);
+
+  // Some Kingz responses include a one-row affiliate summary alongside the
+  // full player list. Use the array that actually contains the most valid
+  // player records instead of whichever array happens to appear first.
+  return candidates.reduce<RawRecord[]>((best, candidate) => {
+    const validPlayers = candidate.filter((entry) => normalizeKingzPlayer(entry)).length;
+    const bestValidPlayers = best.filter((entry) => normalizeKingzPlayer(entry)).length;
+    return validPlayers > bestValidPlayers || (validPlayers === bestValidPlayers && candidate.length > best.length)
+      ? candidate
+      : best;
+  }, []);
 }
 
 function normalizePackDrawPlayer(entry: RawRecord): NormalizedPlayer | undefined {
