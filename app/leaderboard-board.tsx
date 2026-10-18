@@ -2,17 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { thirtyDayPeriods, monthlyPeriods, type LeaderboardPeriod } from "../lib/leaderboard-periods";
-import { PLATFORMS, PLATFORM_BY_ID, isPlatformId, prizePoolFor, type LeaderboardPlatform, type PlatformId } from "../lib/platforms";
+import { monthlyPeriods, type LeaderboardPeriod } from "../lib/leaderboard-periods";
+import { PACKDRAW, prizePoolFor } from "../lib/platforms";
 import { fetchLeaderboard, leaderboardRefreshMs, type Player, type SourceWindow, type LeaderboardResponse } from "./leaderboard-request";
 import { useEffect, useMemo, useState } from "react";
-import { KingzLogo, PackDrawLogo } from "./site-shell";
+import { PackDrawLogo } from "./site-shell";
 
-function configuredSourceWindow(platform: LeaderboardPlatform): SourceWindow {
-  const current = platform.id === "kingz"
-    ? thirtyDayPeriods(platform.defaultPeriodStart).current
-    : monthlyPeriods(platform.defaultPeriodStart).current;
+function configuredSourceWindow(): SourceWindow {
+  const current = monthlyPeriods(PACKDRAW.defaultPeriodStart).current;
   return { from: current.from, to: current.to };
 }
 
@@ -50,7 +47,7 @@ function formatDate(value?: number) {
   }).format(new Date(value));
 }
 
-function validSourceWindow(sourceWindow: SourceWindow | undefined, platform: LeaderboardPlatform): SourceWindow {
+function validSourceWindow(sourceWindow: SourceWindow | undefined): SourceWindow {
   if (
     sourceWindow &&
     Number.isFinite(sourceWindow.from) &&
@@ -60,11 +57,11 @@ function validSourceWindow(sourceWindow: SourceWindow | undefined, platform: Lea
     return sourceWindow;
   }
 
-  return configuredSourceWindow(platform);
+  return configuredSourceWindow();
 }
 
-function formatDateRange(sourceWindow: SourceWindow, platform: LeaderboardPlatform) {
-  const validWindow = validSourceWindow(sourceWindow, platform);
+function formatDateRange(sourceWindow: SourceWindow) {
+  const validWindow = validSourceWindow(sourceWindow);
   return `${formatDate(validWindow.from)} - ${formatDate(Number(validWindow.to) - 1)}`;
 }
 
@@ -80,8 +77,8 @@ function formatUpdatedAt(value?: number) {
   }).format(new Date(value));
 }
 
-function periodCountdown(now: Date, sourceWindow: SourceWindow, platform: LeaderboardPlatform) {
-  const validWindow = validSourceWindow(sourceWindow, platform);
+function periodCountdown(now: Date, sourceWindow: SourceWindow) {
+  const validWindow = validSourceWindow(sourceWindow);
   const remainingMs = Math.max(0, Number(validWindow.to) - now.getTime());
   const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
   const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
@@ -112,33 +109,17 @@ function maskedPlayerName(name: string) {
     .join("");
 }
 
-function PlatformLogo({ platform, className = "" }: { platform: LeaderboardPlatform; className?: string }) {
-  return platform.id === "packdraw"
-    ? <PackDrawLogo className={className} />
-    : <KingzLogo className={className} />;
-}
-
 export default function LeaderboardBoard({ embedded = false }: { embedded?: boolean }) {
-  const searchParams = useSearchParams();
-  const urlPlatform = isPlatformId(searchParams.get("platform")) ? searchParams.get("platform") : "packdraw";
-
-  return <LeaderboardBoardContent key={urlPlatform} embedded={embedded} initialPlatform={urlPlatform as PlatformId} />;
-}
-
-function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedded?: boolean; initialPlatform: PlatformId }) {
   const Title = embedded ? "h2" : "h1";
-  const router = useRouter();
-  const platformId: PlatformId = initialPlatform;
-  const platform = PLATFORM_BY_ID[platformId];
   const [completedPeriods, setCompletedPeriods] = useState<LeaderboardPeriod[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"all" | "top6">("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sourceWindow, setSourceWindow] = useState<SourceWindow>(() => configuredSourceWindow(platform));
+  const [sourceWindow, setSourceWindow] = useState<SourceWindow>(() => configuredSourceWindow());
   const [updatedAt, setUpdatedAt] = useState<number | undefined>(undefined);
-  const [prizePool, setPrizePool] = useState(() => prizePoolFor(platform));
+  const [prizePool, setPrizePool] = useState(() => prizePoolFor(PACKDRAW));
   const [totalWagered, setTotalWagered] = useState(0);
   const [countdown, setCountdown] = useState("--D : --H");
 
@@ -153,7 +134,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
       setError(null);
 
       try {
-        const data = await fetchLeaderboard(platformId);
+        const data = await fetchLeaderboard();
 
         if (isActive) {
           const loadedPlayers = Array.isArray(data.players) ? data.players : [];
@@ -161,16 +142,16 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
           setTotalWagered(typeof data.totalWagered === "number"
             ? data.totalWagered
             : loadedPlayers.reduce((total, player) => total + player.points, 0));
-          setSourceWindow(validSourceWindow(data.sourceWindow, platform));
+          setSourceWindow(validSourceWindow(data.sourceWindow));
           setUpdatedAt(data.sourceWindow?.updatedAt);
           setCompletedPeriods(data.completedPeriods ?? []);
-          setPrizePool(typeof data.prizePool === "number" ? data.prizePool : prizePoolFor(platform));
+          setPrizePool(typeof data.prizePool === "number" ? data.prizePool : prizePoolFor(PACKDRAW));
         }
       } catch (loadError) {
         if (isActive) {
           setPlayers([]);
           setTotalWagered(0);
-          setError(loadError instanceof Error ? loadError.message : `${platform.label} leaderboard data is unavailable.`);
+          setError(loadError instanceof Error ? loadError.message : `${PACKDRAW.label} leaderboard data is unavailable.`);
         }
       } finally {
         if (isActive) {
@@ -199,32 +180,18 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [platformId, platform]);
+  }, []);
 
   useEffect(() => {
     function refreshCountdown() {
-      setCountdown(periodCountdown(new Date(), sourceWindow, platform));
+      setCountdown(periodCountdown(new Date(), sourceWindow));
     }
 
     refreshCountdown();
     const timer = window.setInterval(refreshCountdown, 60 * 1000);
 
     return () => window.clearInterval(timer);
-  }, [sourceWindow, platform]);
-
-  function selectPlatform(nextPlatform: PlatformId) {
-    if (nextPlatform === platformId) {
-      return;
-    }
-
-    const url = new URL(window.location.href);
-    if (nextPlatform === "packdraw") {
-      url.searchParams.delete("platform");
-    } else {
-      url.searchParams.set("platform", nextPlatform);
-    }
-    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
-  }
+  }, [sourceWindow]);
 
   const podiumOrder = useMemo(() => {
     const topThree = players.slice(0, 3);
@@ -251,9 +218,9 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
           <Image className="leaderboard-floater leaderboard-floater-gold" src="/floating/leaderboard-gold-bars.png" alt="" width={512} height={326} unoptimized />
         </div>}
         <div className="leaderboard-hero-copy">
-          <PlatformLogo platform={platform} className="packdraw-logo-hero" />
+          <PackDrawLogo className="packdraw-logo-hero" />
           <Title id="leaderboard-title" className="leaderboard-title">LEADERBOARD</Title>
-          <p className="leaderboard-period">{formatDateRange(sourceWindow, platform)}</p>
+          <p className="leaderboard-period">{formatDateRange(sourceWindow)}</p>
           <div className="leaderboard-summary">
             <div className="leaderboard-prize"><span>MONTHLY PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
             <div className="leaderboard-countdown"><span>TIME REMAINING</span><strong>{countdown}</strong></div>
@@ -263,23 +230,8 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
         </div>
       </section>
 
-      <div className="platform-strip" aria-label="Leaderboard platform">
-        {PLATFORMS.map((entry) => {
-          const active = entry.id === platformId;
-          return (
-            <button key={entry.id} type="button" className={`platform-tile ${active ? "active" : ""}`} onClick={() => selectPlatform(entry.id)} aria-pressed={active}>
-              <div>
-                <PlatformLogo platform={entry} className="mode-platform-logo" />
-                <strong>{entry.label}</strong>
-              </div>
-              <b>{active ? "LIVE" : "VIEW"}</b>
-            </button>
-          );
-        })}
-      </div>
-
       <div className="leaderboard-stats" aria-label="Leaderboard statistics">
-        <div><span>TOP</span><strong>{platform.maxPlayers}</strong></div>
+        <div><span>TOP</span><strong>{PACKDRAW.maxPlayers}</strong></div>
         <div><span>TOTAL WAGERED</span><strong>{formatCompactCurrency(totalWagered)}</strong></div>
         <div><span>PRIZE POOL</span><strong>{formatCurrency(prizePool)}</strong></div>
         <div className="stats-live"><i /> <span>{isLoading ? "UPDATING" : error ? "OFFLINE" : "LIVE"}</span></div>
@@ -318,7 +270,7 @@ function LeaderboardBoardContent({ embedded = false, initialPlatform }: { embedd
         <PlayerRows players={filteredPlayers} label="player rankings" emptyMessage={isLoading ? "LOADING LIVE DATA..." : error ? error : query ? "NO MATCHING PLAYERS." : "NO PLAYERS THIS PERIOD YET."} />
       </section>
 
-      <PreviousLeaderboards periods={completedPeriods} platform={platform} loading={isLoading} error={error} />
+      <PreviousLeaderboards periods={completedPeriods} loading={isLoading} error={error} />
     </div>
   );
 }
@@ -348,7 +300,7 @@ function PlayerRows({ players, label, emptyMessage }: { players: Player[]; label
   );
 }
 
-function PreviousLeaderboards({ periods, platform, loading, error }: { periods: LeaderboardPeriod[]; platform: LeaderboardPlatform; loading: boolean; error: string | null }) {
+function PreviousLeaderboards({ periods, loading, error }: { periods: LeaderboardPeriod[]; loading: boolean; error: string | null }) {
   const [selected, setSelected] = useState("");
   const period = periods.find((entry) => entry.id === selected) ?? periods[0];
 
@@ -363,10 +315,10 @@ function PreviousLeaderboards({ periods, platform, loading, error }: { periods: 
           <>
             <label className="history-picker">Completed period
               <select value={period.id} onChange={(event) => setSelected(event.target.value)}>
-                {periods.map((entry) => <option key={entry.id} value={entry.id}>{formatDateRange(entry, platform)}</option>)}
+                {periods.map((entry) => <option key={entry.id} value={entry.id}>{formatDateRange(entry)}</option>)}
               </select>
             </label>
-            <HistoricalResults key={`${platform.id}-${period.id}`} period={period} platformId={platform.id} label={platform.label} />
+            <HistoricalResults key={period.id} period={period} label={PACKDRAW.label} />
           </>
         ) : (
           <div className="history-empty" role="status">
@@ -379,23 +331,23 @@ function PreviousLeaderboards({ periods, platform, loading, error }: { periods: 
   );
 }
 
-function HistoricalResults({ period, platformId, label }: { period: LeaderboardPeriod; platformId: PlatformId; label: string }) {
+function HistoricalResults({ period, label }: { period: LeaderboardPeriod; label: string }) {
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    void fetchLeaderboard(platformId, period.id).then((result) => {
+    void fetchLeaderboard(period.id).then((result) => {
       if (active) setData(result);
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : "Previous leaderboard is unavailable.");
     });
     return () => { active = false; };
-  }, [platformId, period.id]);
+  }, [period.id]);
 
   return (
     <div className="history-results" aria-busy={!data && !error}>
-      <p className="history-period">{label} &middot; {formatDateRange(period, PLATFORM_BY_ID[platformId])} &middot; Completed</p>
+      <p className="history-period">{label} &middot; {formatDateRange(period)} &middot; Completed</p>
       <PlayerRows players={data?.players ?? []} label="Previous player rankings" emptyMessage={error ?? (data ? "NO PLAYERS IN THIS PERIOD." : "LOADING PREVIOUS RESULTS...")} />
     </div>
   );

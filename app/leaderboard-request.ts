@@ -40,15 +40,13 @@ const pending = new Map<string, Promise<LeaderboardResponse>>();
 
 // Reuse a recent read when moving between Home and Leaderboard.
 export async function fetchLeaderboard(
-  platform: PlatformId = "packdraw",
   period?: string,
 ): Promise<LeaderboardResponse> {
   const search = new URLSearchParams();
-  if (platform !== "packdraw") search.set("platform", platform);
   if (period) search.set("period", period);
   const query = search.toString();
   const url = query ? `/api/leaderboard?${query}` : "/api/leaderboard";
-  const sourceLabel = platform === "kingz" ? "Kingz" : "Pack Draw";
+  const sourceLabel = "Pack Draw";
 
   const cached = cache.get(url);
   if (cached && cached.expiresAt > Date.now()) {

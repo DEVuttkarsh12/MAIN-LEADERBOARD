@@ -14,7 +14,6 @@ const RESPONSE_HEADERS = {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const { status, payload } = await getLeaderboard({
-    platformId: url.searchParams.get("platform"),
     periodId: url.searchParams.get("period"),
   });
 

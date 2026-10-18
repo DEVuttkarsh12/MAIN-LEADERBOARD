@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { thirtyDayPeriods, monthlyPeriods } from "../lib/leaderboard-periods.ts";
+import { monthlyPeriods } from "../lib/leaderboard-periods.ts";
 import { fetchLeaderboard, leaderboardRefreshMs } from "../app/leaderboard-request.ts";
 
 const at = (date) => Date.parse(`${date}T00:00:00Z`);
@@ -32,22 +32,6 @@ test("period boundaries handle year changes, leap years, and invalid settings", 
   assert.equal(monthlyPeriods("2026-08-15", at("2026-09-15")).completed[0].to, at("2026-09-15"));
 });
 
-test("Kingz continues the September 17 run for 30 days before rolling over", () => {
-  for (const day of ["2026-09-30", "2026-10-01", "2026-10-16"]) {
-    const periods = thirtyDayPeriods("2026-09-17", at(day));
-    assert.deepEqual(periods.current, { id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-17") });
-    assert.deepEqual(periods.completed, []);
-  }
-
-  const rolled = thirtyDayPeriods("2026-09-17", at("2026-10-17"));
-  assert.deepEqual(rolled.current, { id: "2026-10-17", from: at("2026-10-17"), to: at("2026-11-16") });
-  assert.deepEqual(rolled.completed, [{ id: "2026-09-17", from: at("2026-09-17"), to: at("2026-10-17") }]);
-
-  const following = thirtyDayPeriods("2026-09-17", at("2026-11-16"));
-  assert.deepEqual(following.completed.map((period) => period.id), ["2026-10-17", "2026-09-17"]);
-  assert.equal(following.current.from, rolled.current.to);
-});
-
 test("shared read-only requests coalesce, cache recent reads, and back off errors", async (t) => {
   let now = at("2026-08-31");
   let calls = 0;
@@ -61,27 +45,27 @@ test("shared read-only requests coalesce, cache recent reads, and back off error
     return new Response(JSON.stringify(fail ? { error: "Rate limited" } : { players: [] }), { status: fail ? 429 : 200 });
   });
 
-  await Promise.all([fetchLeaderboard("packdraw"), fetchLeaderboard("packdraw")]);
+  await Promise.all([fetchLeaderboard(), fetchLeaderboard()]);
   assert.equal(calls, 1);
-  await fetchLeaderboard("packdraw");
+  await fetchLeaderboard();
   assert.equal(calls, 1);
   now += leaderboardRefreshMs;
-  await fetchLeaderboard("packdraw");
+  await fetchLeaderboard();
   assert.equal(calls, 2);
 
-  await fetchLeaderboard("packdraw", "2026-08-31");
+  await fetchLeaderboard("2026-08-31");
   assert.equal(calls, 3);
-  await fetchLeaderboard("packdraw", "2026-08-31");
+  await fetchLeaderboard("2026-08-31");
   assert.equal(calls, 3);
 
   fail = true;
   now += leaderboardRefreshMs;
-  await assert.rejects(fetchLeaderboard("packdraw"), /Rate limited/);
-  await assert.rejects(fetchLeaderboard("packdraw"), /Rate limited/);
+  await assert.rejects(fetchLeaderboard(), /Rate limited/);
+  await assert.rejects(fetchLeaderboard(), /Rate limited/);
   assert.equal(calls, 4);
 });
 
-test("fetchLeaderboard scopes urls by platform and keeps the default pack-draw route stable", async (t) => {
+test("fetchLeaderboard scopes urls by period and keeps the default pack-draw route stable", async (t) => {
   const urls = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
     urls.push(String(url));
@@ -89,13 +73,11 @@ test("fetchLeaderboard scopes urls by platform and keeps the default pack-draw r
     return new Response(JSON.stringify({ players: [] }), { status: 200 });
   });
 
-  await fetchLeaderboard("packdraw");
-  await fetchLeaderboard("kingz");
-  await fetchLeaderboard("kingz", "2026-08-31");
+  await fetchLeaderboard();
+  await fetchLeaderboard("2026-08-31");
 
   assert.deepEqual(urls, [
     "/api/leaderboard",
-    "/api/leaderboard?platform=kingz",
-    "/api/leaderboard?platform=kingz&period=2026-08-31",
+    "/api/leaderboard?period=2026-08-31",
   ]);
 });

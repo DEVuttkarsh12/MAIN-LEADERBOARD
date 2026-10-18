@@ -1,6 +1,6 @@
-import type { LeaderboardPlatform, PlatformId } from "./platforms";
-import { PLATFORM_BY_ID } from "./platforms";
-import { thirtyDayPeriods, monthlyPeriods, type LeaderboardPeriod } from "./leaderboard-periods";
+import type { LeaderboardPlatform } from "./platforms";
+import { PACKDRAW } from "./platforms";
+import { monthlyPeriods, type LeaderboardPeriod } from "./leaderboard-periods";
 
 export type LeaderboardPlayer = {
   rank: number;
@@ -65,26 +65,6 @@ function toNumber(value: unknown): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function pickText(record: RawRecord, keys: string[]): string | undefined {
-  for (const key of keys) {
-    const value = toText(record[key]);
-    if (value) {
-      return value;
-    }
-  }
-  return undefined;
-}
-
-function pickNumber(record: RawRecord, keys: string[]): number | undefined {
-  for (const key of keys) {
-    const value = toNumber(record[key]);
-    if (value !== undefined) {
-      return value;
-    }
-  }
-  return undefined;
-}
-
 function initialsFor(name: string): string {
   const letters = name
     .replace(/^@/, "")
@@ -109,11 +89,6 @@ function formatPackDrawDate(timestamp: number): string {
   return `${date.getUTCMonth() + 1}-${date.getUTCDate()}-${date.getUTCFullYear()}`;
 }
 
-function formatDayDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
-
 function readTimestamp(record: RawRecord, key: string): number | undefined {
   const value = toText(record[key]);
   if (!value) {
@@ -124,38 +99,17 @@ function readTimestamp(record: RawRecord, key: string): number | undefined {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
-export function resolvePlatform(id: string | null): LeaderboardPlatform | undefined {
-  if (id === null || id === "") {
-    return PLATFORM_BY_ID.packdraw;
-  }
-  return Object.hasOwn(PLATFORM_BY_ID, id) ? PLATFORM_BY_ID[id as PlatformId] : undefined;
-}
-
 export function readApiKey(platform: LeaderboardPlatform): string | undefined {
   return process.env[platform.apiKeyEnv]?.trim() || undefined;
 }
 
 function readPeriodStart(platform: LeaderboardPlatform): string {
-  if (platform.id === "kingz") {
-    // Keep the campaign's start date independent of stale hosting settings.
-    return platform.defaultPeriodStart;
-  }
-
   return process.env[platform.periodStartEnv]?.trim() || platform.defaultPeriodStart;
 }
 
 function readPrizeList(platform: LeaderboardPlatform): number[] {
-  if (platform.id === "packdraw") {
-    // Keep the advertised payouts independent of stale hosting settings.
-    return platform.defaultPrizes;
-  }
-
-  const prizes = process.env[platform.prizesEnv]
-    ?.split(/[\s,]+/)
-    .map((amount) => Number(amount.trim()))
-    .filter((amount) => Number.isFinite(amount) && amount >= 0);
-
-  return prizes && prizes.length > 0 ? prizes : platform.defaultPrizes;
+  // Keep the advertised payouts independent of stale hosting settings.
+  return platform.defaultPrizes;
 }
 
 function buildSourceUrl(
@@ -165,23 +119,14 @@ function buildSourceUrl(
   isHistorical: boolean,
 ): string | undefined {
   const template = process.env[platform.urlEnv]?.trim() || platform.defaultUrl;
-
-  if (platform.id === "packdraw") {
-    const url = new URL(template.replace("API_KEY", encodeURIComponent(apiKey)));
-    url.searchParams.set("apiKey", apiKey);
-    url.searchParams.set("after", formatPackDrawDate(period.from));
-    if (isHistorical) {
-      url.searchParams.set("before", formatPackDrawDate(period.to));
-    } else {
-      url.searchParams.delete("before");
-    }
-    return url.toString();
+  const url = new URL(template.replace("API_KEY", encodeURIComponent(apiKey)));
+  url.searchParams.set("apiKey", apiKey);
+  url.searchParams.set("after", formatPackDrawDate(period.from));
+  if (isHistorical) {
+    url.searchParams.set("before", formatPackDrawDate(period.to));
+  } else {
+    url.searchParams.delete("before");
   }
-
-  const url = new URL(template);
-  url.searchParams.set("start_at", formatDayDate(period.from));
-  url.searchParams.set("end_at", formatDayDate(period.to - 1));
-  url.searchParams.set("key", apiKey);
   return url.toString();
 }
 
@@ -195,38 +140,6 @@ function readPackDrawEntries(payload: unknown): RawRecord[] {
   }
 
   return [];
-}
-
-function readKingzEntries(payload: unknown): RawRecord[] {
-  const candidates: RawRecord[][] = [];
-
-  function collect(value: unknown, depth: number): void {
-    if (depth > 6) return;
-
-    if (Array.isArray(value)) {
-      const records = value.filter(isRecord);
-      if (records.length > 0) candidates.push(records);
-      for (const entry of records) collect(entry, depth + 1);
-      return;
-    }
-
-    if (isRecord(value)) {
-      for (const nested of Object.values(value)) collect(nested, depth + 1);
-    }
-  }
-
-  collect(payload, 0);
-
-  // Some Kingz responses include a one-row affiliate summary alongside the
-  // full player list. Use the array that actually contains the most valid
-  // player records instead of whichever array happens to appear first.
-  return candidates.reduce<RawRecord[]>((best, candidate) => {
-    const validPlayers = candidate.filter((entry) => normalizeKingzPlayer(entry)).length;
-    const bestValidPlayers = best.filter((entry) => normalizeKingzPlayer(entry)).length;
-    return validPlayers > bestValidPlayers || (validPlayers === bestValidPlayers && candidate.length > best.length)
-      ? candidate
-      : best;
-  }, []);
 }
 
 function normalizePackDrawPlayer(entry: RawRecord): NormalizedPlayer | undefined {
@@ -246,101 +159,28 @@ function normalizePackDrawPlayer(entry: RawRecord): NormalizedPlayer | undefined
   };
 }
 
-function normalizeKingzPlayer(entry: RawRecord): NormalizedPlayer | undefined {
-  const name =
-    pickText(entry, [
-      "username",
-      "user_name",
-      "player",
-      "player_name",
-      "display_name",
-      "nickname",
-      "name",
-      "handle",
-    ]) ||
-    pickText(entry, ["user_id", "userId", "player_id", "playerId", "id", "uid"]);
-
-  const points = pickNumber(entry, [
-    "wagered_amount",
-    "wager_amount",
-    "wagerAmount",
-    "total_wager",
-    "totalWagered",
-    "total_wagered",
-    "wagered",
-    "turnover",
-    "volume",
-    "stake",
-    "amount",
-    "points",
-    "wager",
-    "score",
-  ]);
-
-  if (!name || points === undefined) {
-    return undefined;
-  }
-
-  return {
-    name,
-    handle: pickText(entry, ["user_id", "userId", "player_id", "playerId", "id", "uid"]) || name,
-    initials: initialsFor(name),
-    points,
-    movement: "same",
-  };
-}
-
-function normalizeHistoricalEntries(
-  platform: LeaderboardPlatform,
-  payload: unknown,
-): NormalizedPlayer[] {
-  if (platform.id === "kingz") {
-    return readKingzEntries(payload)
-      .map(normalizeKingzPlayer)
-      .filter((player): player is NormalizedPlayer => Boolean(player));
-  }
-
+function normalizeHistoricalEntries(payload: unknown): NormalizedPlayer[] {
   return readPackDrawEntries(payload)
     .map(normalizePackDrawPlayer)
     .filter((player): player is NormalizedPlayer => Boolean(player));
 }
 
 function verifyHistoricalWindow(
-  platform: LeaderboardPlatform,
   payload: unknown,
   period: LeaderboardPeriod,
 ): boolean {
-  if (platform.id === "packdraw") {
-    return (
-      isRecord(payload) &&
-      readTimestamp(payload, "after") === period.from &&
-      readTimestamp(payload, "before") === period.to
-    );
-  }
-
-  // The Kingz feed does not always echo the requested window. When the keys are
-  // present, require them to match the bounded monthly period exactly.
-  if (isRecord(payload)) {
-    const start = readTimestamp(payload, "start_at");
-    const end = readTimestamp(payload, "end_at");
-    if (start !== undefined || end !== undefined) {
-      return start === period.from && end === period.to - 24 * 60 * 60 * 1000;
-    }
-  }
-
-  return true;
+  return (
+    isRecord(payload) &&
+    readTimestamp(payload, "after") === period.from &&
+    readTimestamp(payload, "before") === period.to
+  );
 }
 
-function sourceUpdatedAt(platform: LeaderboardPlatform, payload: unknown): number {
+function sourceUpdatedAt(payload: unknown): number {
   if (isRecord(payload)) {
-    const keys = platform.id === "kingz"
-      ? ["asOf", "as_of", "updated_at", "generated_at", "cache_updated_at"]
-      : ["asOf"];
-    for (const key of keys) {
-      const timestamp = readTimestamp(payload, key);
-      if (timestamp !== undefined) {
-        return timestamp;
-      }
+    const timestamp = readTimestamp(payload, "asOf");
+    if (timestamp !== undefined) {
+      return timestamp;
     }
   }
 
@@ -354,7 +194,7 @@ function buildLeaderboardPayload(
   completedPeriods: LeaderboardPeriod[],
 ): LeaderboardApiResult {
   const prizes = readPrizeList(platform);
-  const rankedPlayers = normalizeHistoricalEntries(platform, payload).sort(
+  const rankedPlayers = normalizeHistoricalEntries(payload).sort(
     (left, right) => right.points - left.points,
   );
 
@@ -376,7 +216,7 @@ function buildLeaderboardPayload(
       sourceWindow: {
         from: period.from,
         to: period.to,
-        updatedAt: sourceUpdatedAt(platform, payload),
+        updatedAt: sourceUpdatedAt(payload),
       },
       prizePool: prizes.reduce((total, prize) => total + prize, 0),
       prizes,
@@ -386,21 +226,11 @@ function buildLeaderboardPayload(
 }
 
 export async function getLeaderboard(options: {
-  platformId: string | null;
   periodId: string | null;
 }): Promise<LeaderboardApiResult> {
-  const platform = resolvePlatform(options.platformId);
-  if (!platform) {
-    return {
-      status: 400,
-      payload: { players: [], error: "That leaderboard platform is not available." },
-    };
-  }
-
+  const platform = PACKDRAW;
   const periodStart = readPeriodStart(platform);
-  const periods = platform.id === "kingz"
-    ? thirtyDayPeriods(periodStart)
-    : monthlyPeriods(periodStart);
+  const periods = monthlyPeriods(periodStart);
   const isHistorical = options.periodId !== null;
   const period = isHistorical
     ? periods.completed.find((entry) => entry.id === options.periodId)
@@ -448,7 +278,7 @@ export async function getLeaderboard(options: {
       };
     }
 
-    if (isHistorical && !verifyHistoricalWindow(platform, payload, period)) {
+    if (isHistorical && !verifyHistoricalWindow(payload, period)) {
       return {
         status: 502,
         payload: { players: [], error: `${platform.label} could not verify this leaderboard period.` },
