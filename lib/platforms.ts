@@ -26,7 +26,7 @@ export const PACKDRAW: LeaderboardPlatform = {
   periodStartEnv: "PACKDRAW_PERIOD_START",
   defaultPeriodStart: "2026-08-31",
   defaultUrl: "https://packdraw.com/api/v1/affiliates/leaderboard?apiKey=API_KEY",
-  defaultPrizes: [2000, 950, 500, 200, 150, 75, 75, 50],
+  defaultPrizes: [750, 500, 250, 100, 100, 75, 75, 50, 50, 50],
   maxPlayers: 10,
 };
 

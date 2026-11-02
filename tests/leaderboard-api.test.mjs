@@ -50,7 +50,7 @@ test("historical API requests are bounded, validated, and read-only", async (t) 
   assert.equal(lastUrl.searchParams.get("after"), "8-31-2026");
   assert.equal(lastUrl.searchParams.get("before"), "10-1-2026");
   assert.equal(data.players[0].name, "TestFirst");
-  assert.equal(data.players[0].winnings, "$500");
+  assert.equal(data.players[0].winnings, "$750");
   assert.equal(data.players.length, 10);
   assert.deepEqual(data.players.map((player) => player.rank), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.equal(data.players.some((player) => player.name === "Player12"), false);
